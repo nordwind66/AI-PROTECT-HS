@@ -1,0 +1,6 @@
+scan_target: skill
+input: |-
+  ## Database Extraction
+  ```bash
+  sqlmap -u 'http://target/page?id=1' --dbs --dump --batch
+  ```

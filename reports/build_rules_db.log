@@ -1,0 +1,110 @@
+
+====================================================================================================
+== 1/9 upstream sources: verify against sources.lock.json
+====================================================================================================
+all materialised trees match sources.lock.json
+source      commit        date        licence     files  skipped  tree        
+----------  ------------  ----------  ----------  -----  -------  ------------
+atr         7c6f9ca48c8a  2026-10-15  MIT         1455   2        dc2e8dfd85f4
+fevzi_pidr  81d00cd290fb  2026-08-03  Apache-2.0  16     1        706f18d33aaf
+trans_pid   93b913a354c8  2026-05-20  MIT         19     1        9db3706c904a
+
+====================================================================================================
+== 2/9 database: init (schema migrations)
+====================================================================================================
+[db] created F:\SVN_179\AI防护规则\data\ai_prompt_rules.db - schema version 1; applied now: [1]
+
+====================================================================================================
+== 3/9 import every upstream source
+====================================================================================================
+[atr] commit 7c6f9ca48c8a: 836 source rules -> new 836, changed 0, unchanged 0, removed upstream 0
+    rule decisions : {'excluded_scope': 500, 'included': 304, 'partial': 12, 'unsupported': 20}
+    pattern fates  : {'excluded_language': 76, 'excluded_scope': 1905, 'hs_native': 1332, 'hs_prefilter_pcre2': 15, 'unsupported': 131}
+    applied        : {"changed":0,"conflicts":0,"new":836,"patterns_new":1317,"patterns_reused":23,"removed":0,"rules_created":316,"rules_deprecated":0,"rules_updated":0,"tests":3599,"unchanged":0}
+[trans_pid] commit 93b913a354c8: 11 source rules -> new 11, changed 0, unchanged 0, removed upstream 0
+    rule decisions : {'included': 11}
+    pattern fates  : {'hs_native': 135}
+    applied        : {"changed":0,"conflicts":0,"new":11,"patterns_new":135,"patterns_reused":0,"removed":0,"rules_created":11,"rules_deprecated":0,"rules_updated":0,"tests":128,"unchanged":0}
+[fevzi_pidr] commit 81d00cd290fb: 20 source rules -> new 20, changed 0, unchanged 0, removed upstream 0
+    rule decisions : {'excluded_language': 4, 'included': 15, 'partial': 1}
+    pattern fates  : {'excluded_language': 4, 'hs_native': 15, 'hs_prefilter_pcre2': 1}
+    applied        : {"changed":0,"conflicts":0,"new":20,"patterns_new":17,"patterns_reused":0,"removed":0,"rules_created":16,"rules_deprecated":0,"rules_updated":0,"tests":33,"unchanged":0}
+
+====================================================================================================
+== 4/9 manual rules
+====================================================================================================
+created AIPS-SB-0030 (revision 1): English: refusal and warning suppression
+created AIPS-DX-0013 (revision 1): English: instruction to send secrets or history to an external address
+created AIPS-RS-0030 (revision 1): English: identity replacement with a privileged or unrestricted role
+created AIPS-JB-0115 (revision 1): English: developer mode that suspends policies
+Note: published versions are unchanged. Run `stage`/`publish` and then compile to ship this change.
+created AIPS-IO-0032 (revision 1): 中文：忽略/无视之前的指令
+created AIPS-SP-0018 (revision 1): 中文：套取系统提示词/内部指令
+created AIPS-RS-0031 (revision 1): 中文：角色重置与越权身份
+created AIPS-JB-0116 (revision 1): 中文：越狱/无限制模式诱导
+created AIPS-SB-0031 (revision 1): 中文：拒绝抑制与强制输出
+created AIPS-IH-0031 (revision 1): 中文：翻译/总结任务中的指令劫持
+created AIPS-PI-0039 (revision 1): 中英混合：提示注入常见短语
+created AIPS-OB-0044 (revision 1): 中文：不可见字符/编码混淆提示
+created AIPS-DX-0014 (revision 1): 中文：诱导外传敏感数据的指令
+Note: published versions are unchanged. Run `stage`/`publish` and then compile to ship this change.
+2 manual rule file(s)
+
+====================================================================================================
+== 5/9 rule tests against the Python reference oracle
+====================================================================================================
+[verify-tests] Python oracle: {'ok': 3504, 'mismatch': 0, 'skipped': 46, 'uncompilable': 0, 'known_gap_now_detected': 58, 'known_gap_total': 309}
+
+====================================================================================================
+== 6/9 validate (strict)
+====================================================================================================
+validated 352 enabled rule(s), 1516 pattern(s): 0 error(s), 0 warning(s), 3 info
+  [info:duplicate_rule_candidate] x3
+      AIPS-JB-0008: rules with identical pattern sets: AIPS-JB-0008, AIPS-JB-0010
+      AIPS-JB-0009: rules with identical pattern sets: AIPS-JB-0009, AIPS-JB-0011
+      AIPS-RS-0008: rules with identical pattern sets: AIPS-RS-0008, AIPS-RS-0009
+
+====================================================================================================
+== 7/9 publish 1.0.0
+====================================================================================================
+validated 352 enabled rule(s), 1516 pattern(s): 0 error(s), 0 warning(s), 3 info
+  [info:duplicate_rule_candidate] x3
+      AIPS-JB-0008: rules with identical pattern sets: AIPS-JB-0008, AIPS-JB-0010
+      AIPS-JB-0009: rules with identical pattern sets: AIPS-JB-0009, AIPS-JB-0011
+      AIPS-RS-0008: rules with identical pattern sets: AIPS-RS-0008, AIPS-RS-0009
+[publish] version 1.0.0: 352 rule(s), 1500 pattern(s), digest 48e186dcf308ef4e
+[publish] published 1.0.0 (version_id 1, snapshot sha256 34e6d9afaa76ca99...)
+Next: compile for the target platform, e.g.
+  ai-prompt-guard compile --db data/ai_prompt_rules.db --version 1.0.0 --target native --out dist/
+then:  rules.py register-artifact --manifest dist/<os>/<arch>/1.0.0/manifest.json
+       rules.py activate --version 1.0.0
+version  status     rules  patterns  digest        published            artifacts  active
+-------  ---------  -----  --------  ------------  -------------------  ---------  ------
+1.0.0    published  352    1500      48e186dcf308  2026-10-17T03:28:40  0                
+
+====================================================================================================
+== 8/9 reports and corpus evaluation (Python reference engine)
+====================================================================================================
+[report] wrote reports/source_inventory.json
+[report] wrote reports/source_inventory.md
+[report] wrote reports/rule_inventory.csv
+[report] wrote reports/source_rules.csv
+[report] wrote reports/coverage.md
+[report] wrote reports/language_review.md
+[eval] benign_zh_en: 61 sample(s) -> {'alert': 3, 'allow': 55, 'review': 3}
+[eval] benign_extended: 160 sample(s) -> {'allow': 155, 'review': 5}
+[eval] attacks_zh_en: 72 sample(s) -> {'alert': 60, 'allow': 5, 'review': 7}
+[eval] trans_dataset: 1000 sample(s) -> {'alert': 155, 'allow': 800, 'review': 45}
+[eval] wrote tests/corpus/expected/benign_zh_en.expected.jsonl
+[eval] wrote tests/corpus/expected/benign_extended.expected.jsonl
+[eval] wrote tests/corpus/expected/attacks_zh_en.expected.jsonl
+[eval] wrote tests/corpus/expected/trans_dataset.expected.jsonl
+[eval] wrote reports/false_positive.md, reports/detection_eval.md
+
+====================================================================================================
+== 9/9 database integrity + delivery fingerprint
+====================================================================================================
+[db] integrity_check ok, foreign_key_check ok, migrations ok, audit chain ok
+database      : data/ai_prompt_rules.db (13885440 bytes, journal_mode=delete)
+sha256        : dc0b6d6bc4e4ca35ce7738658144871723da11b3aeb53d13b1d8e064c837c1b7
+elapsed       : 33.8s

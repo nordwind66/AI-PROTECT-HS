@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Processing batch 3 of 5. All items completed successfully so far.
+rationale: Legitimate batch processing with bounded progress counter

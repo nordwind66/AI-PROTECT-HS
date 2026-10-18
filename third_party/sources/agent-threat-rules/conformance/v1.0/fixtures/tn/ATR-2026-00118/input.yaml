@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Please review each permission request carefully before approving.
+rationale: Encouraging careful review

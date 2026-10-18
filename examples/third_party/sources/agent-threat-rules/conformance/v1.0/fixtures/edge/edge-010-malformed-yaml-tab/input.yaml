@@ -1,0 +1,3 @@
+scan_target: skill
+input: "description:\n\tnested: value"
+rationale: YAML 1.2 forbids tabs in indentation. Engine that parses input as YAML MUST report graceful_error, not crash.

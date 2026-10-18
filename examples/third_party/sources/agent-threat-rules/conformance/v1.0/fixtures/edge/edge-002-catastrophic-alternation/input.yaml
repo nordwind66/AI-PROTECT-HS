@@ -1,0 +1,3 @@
+scan_target: skill
+input: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaXaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+rationale: Inputs with long runs followed by a mismatch character are the classic ReDoS shape for `(a+)+$` style patterns. Engines MUST timeout per SPEC §13.2.

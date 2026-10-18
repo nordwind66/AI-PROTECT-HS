@@ -1,0 +1,3 @@
+scan_target: skill
+input: "legitimate content\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0attack payload after null"
+rationale: Null bytes MUST NOT cause input truncation in the engine.

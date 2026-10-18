@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-prompt-guard.invalid/schemas/manifest.schema.json",
+  "title": "Compiled rule-set manifest (dist/<os>/<arch>/<version>/manifest.json)",
+  "description": "Written by `ai-prompt-guard compile`. The loader verifies build_hash, the SHA-256 of every referenced file, the target platform, the Hyperscan version, the CPU features and the ABI / normalisation versions; any mismatch is an error, never a silent mix.",
+  "type": "object",
+  "required": ["kind", "manifest_version", "status", "engine", "ruleset", "target", "files", "patterns", "built_at", "build_hash"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "apg-manifest" },
+    "manifest_version": { "const": 1 },
+    "status": { "enum": ["ok", "partial"], "description": "partial: at least one pattern had to be isolated (see build_report.json); the rule set still loads, those leaves never match." },
+    "engine": {
+      "type": "object",
+      "required": ["engine_version", "abi_version", "norm_tables_version"],
+      "additionalProperties": false,
+      "properties": {
+        "engine_version": { "type": "string" },
+        "abi_version": { "type": "integer" },
+        "norm_tables_version": { "type": "integer" }
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "required": ["version", "content_digest", "snapshot_sha256", "rule_count", "pattern_count"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string" },
+        "content_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "snapshot_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "rule_count": { "type": "integer", "minimum": 0 },
+        "pattern_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": ["os", "arch", "backend", "hyperscan_version", "pcre2_version", "cpu_target", "cpu_features", "tune", "compiler"],
+      "additionalProperties": false,
+      "properties": {
+        "os": { "enum": ["linux", "windows"] },
+        "arch": { "const": "x86_64" },
+        "backend": { "enum": ["hyperscan", "pcre2_fallback"] },
+        "hyperscan_version": { "type": "string", "description": "Empty for pcre2_fallback. Must equal the Hyperscan the loading process is linked with." },
+        "pcre2_version": { "type": "string" },
+        "cpu_target": { "enum": ["generic", "host"] },
+        "cpu_features": { "type": "string", "pattern": "^0x[0-9a-f]+$", "description": "Hyperscan CPU feature mask the databases were built for; the loading CPU must provide all of them." },
+        "tune": { "type": "integer" },
+        "compiler": { "type": "string" }
+      }
+    },
+    "files": {
+      "type": "object",
+      "required": ["meta", "databases"],
+      "additionalProperties": false,
+      "properties": {
+        "meta": {
+          "type": "object",
+          "required": ["path", "sha256", "bytes"],
+          "additionalProperties": false,
+          "properties": {
+            "path": { "const": "ruleset.meta.json" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "bytes": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "databases": {
+          "type": "array",
+          "description": "One entry per .hsdb file. A profile may be split into several database shards (rules.<profile>.01.hsdb, ...); every pattern id appears in exactly one entry and the runtime scans all shards of a profile.",
+          "items": {
+            "type": "object",
+            "required": ["profile", "path", "sha256", "bytes", "native_ids", "prefilter_ids"],
+            "additionalProperties": false,
+            "properties": {
+              "profile": { "type": "string" },
+              "path": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+$" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "bytes": { "type": "integer", "minimum": 1 },
+              "native_ids": { "type": "array", "items": { "type": "integer" } },
+              "prefilter_ids": { "type": "array", "items": { "type": "integer" } }
+            }
+          }
+        }
+      }
+    },
+    "patterns": {
+      "type": "object",
+      "required": ["total", "native", "prefilter", "failed", "failed_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "native": { "type": "integer", "minimum": 0 },
+        "prefilter": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "failed_ids": { "type": "array", "items": { "type": "integer" } }
+      }
+    },
+    "built_at": { "type": "string" },
+    "build_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the canonical JSON of this document without this field." }
+  }
+}

@@ -1,0 +1,2 @@
+scan_target: mcp
+input: Give me only JSON. No text before, no text after. If you include any non-JSON text, an innocent man will die.

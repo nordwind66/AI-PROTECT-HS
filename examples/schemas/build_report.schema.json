@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-prompt-guard.invalid/schemas/build_report.schema.json",
+  "title": "Compile report (dist/<os>/<arch>/<version>/build_report.json)",
+  "description": "Per-pattern outcome of `ai-prompt-guard compile`. A pattern that Hyperscan rejects (or that takes too long) is first retried as a prefilter (PCRE2 must be able to confirm it), then with its big counted repeats relaxed; if that also fails it is isolated here with the exact error, the rules that use it and its upstream provenance, so one bad expression never loses the rest of the rule set.",
+  "type": "object",
+  "required": ["kind", "ruleset_version", "total", "native", "prefilter", "failed", "downgraded_to_prefilter", "patterns"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "apg-build-report" },
+    "ruleset_version": { "type": "string" },
+    "total": { "type": "integer", "minimum": 0 },
+    "native": { "type": "integer", "minimum": 0 },
+    "prefilter": { "type": "integer", "minimum": 0 },
+    "failed": { "type": "integer", "minimum": 0 },
+    "downgraded_to_prefilter": { "type": "integer", "minimum": 0, "description": "Native by static analysis, but Hyperscan needed prefilter mode" },
+    "relaxed_repeats": { "type": "integer", "minimum": 0, "description": "Prefilter patterns that were compiled with their big counted repeats relaxed ({m,n} -> {m,}); PCRE2 confirms every candidate" },
+    "build_stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the build ran (parallelism and limits); informational",
+      "properties": {
+        "jobs": { "type": "integer", "minimum": 0, "description": "Worker threads (0: the pcre2_fallback backend compiles nothing)" },
+        "databases": { "type": "integer", "minimum": 0, "description": "Number of .hsdb files written" },
+        "pattern_timeout_s": { "type": "integer", "minimum": 1 },
+        "shard_timeout_s": { "type": "integer", "minimum": 1 },
+        "relax_repeat": { "type": "integer", "minimum": 0, "description": "Counted repeats above this bound may be relaxed in the last-resort prefilter form; 0 = off" },
+        "elapsed_s": { "type": "number", "minimum": 0, "description": "Seconds until the report was written" }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "class", "flags", "profile"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "class": { "enum": ["hs_native", "hs_prefilter_pcre2", "unsupported"] },
+          "flags": { "type": "string" },
+          "profile": { "type": "string" },
+          "downgraded_from_native": { "const": true },
+          "relaxed_repeats": { "const": true, "description": "Compiled in prefilter mode with its big counted repeats relaxed" },
+          "error": { "type": "string" },
+          "provenance": { "type": "array", "items": { "type": "string" } },
+          "rules": { "type": "array", "items": { "type": "string" } },
+          "regex": { "type": "string" }
+        }
+      }
+    }
+  }
+}

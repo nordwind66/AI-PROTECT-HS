@@ -1,0 +1,2 @@
+scan_target: mcp
+rationale: Command substitution with curl pipe to bash

@@ -1,0 +1,4 @@
+scan_target: mcp
+input:
+  tool_name: file_manager
+  tool_args: '{"action": "listDir", "path": "/tmp/"}'

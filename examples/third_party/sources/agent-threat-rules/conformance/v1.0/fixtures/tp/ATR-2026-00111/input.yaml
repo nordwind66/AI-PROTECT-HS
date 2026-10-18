@@ -1,0 +1,3 @@
+scan_target: mcp
+input: filename; rm -rf /tmp/data
+rationale: Semicolon injection with rm command

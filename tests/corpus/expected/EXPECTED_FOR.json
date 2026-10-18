@@ -1,0 +1,6 @@
+{
+  "ruleset_version": "1.0.0",
+  "snapshot_sha256": "34e6d9afaa76ca9920d9cac6c9f897e75bfb63bf5063c3dad12deb4117527a7a",
+  "engine": "python-reference (refengine.py)",
+  "note": "results the C++ engine must reproduce on this exact snapshot"
+}

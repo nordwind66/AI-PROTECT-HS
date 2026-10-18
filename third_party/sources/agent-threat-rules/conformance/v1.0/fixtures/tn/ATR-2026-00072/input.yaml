@@ -1,0 +1,3 @@
+scan_target: mcp
+input: How confident are you in your answer about climate change?
+rationale: Normal question about response confidence in conversation

@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/example_cpp_scan.dir/cpp/scan.cpp.o -o ../bin/example_cpp_scan  -Wl,-rpath,/home/wangyy/ai-rule/AI防护规则/bin ../bin/libai_prompt_guard.so.1.0.0 

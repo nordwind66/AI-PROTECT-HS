@@ -1,0 +1,35 @@
+# instruction-override rules — PID-OVR-NNN
+# Auto-validated in CI (every pattern compiles; schema-checked).
+
+- id: PID-OVR-001
+  name: "Ignore previous instructions"
+  category: instruction-override
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "(?:ignore|disregard|forget|override)\\s+(?:all\\s+|the\\s+|any\\s+|your\\s+)*(?:previous|prior|above|earlier|preceding|system|initial)\\s+(?:instruction|prompt|context|rule|direction)s?"
+  maps_to: ["LLM01:2025", "AML.T0051.000"]
+  false_positive: "Fires on documentation that quotes the phrase; scope to untrusted input."
+  description: "The canonical direct-injection primitive: tell the model to discard prior/system instructions."
+
+- id: PID-OVR-002
+  name: "New instructions follow / from now on"
+  category: instruction-override
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "(?:new\\s+instructions?\\s+(?:follow|below)|from\\s+now\\s+on\\s+you\\s+(?:must|will|are)|these\\s+are\\s+your\\s+new\\s+(?:rules|instructions))"
+  maps_to: ["LLM01:2025", "AML.T0051.000"]
+  false_positive: "Can appear in legitimate prompt engineering; weight by context."
+  description: "Attempts to install replacement instructions."
+
+- id: PID-OVR-003
+  name: "Disregard the system prompt"
+  category: instruction-override
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "disregard\\s+(?:the\\s+)?(?:system\\s+prompt|everything\\s+above)"
+  maps_to: ["LLM01:2025", "LLM07:2025"]
+  false_positive: "Low FP."
+  description: "Targets the system prompt specifically."

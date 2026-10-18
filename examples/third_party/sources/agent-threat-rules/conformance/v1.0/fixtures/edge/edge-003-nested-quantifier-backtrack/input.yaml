@@ -1,0 +1,3 @@
+scan_target: skill
+input: (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)!
+rationale: Nested quantifier patterns like `(a+)*` over inputs that almost match drive exponential backtracking.

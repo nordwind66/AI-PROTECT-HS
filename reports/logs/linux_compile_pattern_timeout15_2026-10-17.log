@@ -1,0 +1,79 @@
+# Produced by the development session over SSH on the user's Linux machine (host "tony": Ubuntu 24.04, glibc 2.39, GCC 13.3.0, CMake 3.28.3,
+# Hyperscan 5.4.2-2, PCRE2 10.42, SQLite 3.45.1, system Python 3.12.3, 24 CPU threads), 2026-10-17. Not edited.
+# Command: build/linux/bin/ai-prompt-guard compile --db /tmp/rules.db --version 1.0.0 --out /tmp/dist_order_test --force --pattern-timeout 15   (experiment that led to the two-level time limit)
+#
+[compile] snapshot 1.0.0: sha256 34e6d9afaa76ca99..., 352 rules, 1500 patterns
+[compile] Hyperscan 5.4.2 2024-04-19, cpu-target generic (features 0x0)
+[compile] parallel build: 16 worker thread(s), automatic number of database shards, repeat relaxation above 32 (the Hyperscan compiler is assumed to be re-entrant; --jobs 1 builds strictly sequentially)
+[compile] fold_v1: screening 1365 patterns one by one on 16 worker thread(s), limit 15 s per attempt; 478 pattern(s) with very large counted repeats start with the relaxed prefilter form
+[compile] fold_v1 screening: 362/1365 patterns done (17 native, 345 prefilter, 0 isolated), 16 running, elapsed 5.0 s
+[compile] fold_v1 screening: 462/1365 patterns done (50 native, 412 prefilter, 0 isolated), 16 running, elapsed 10.1 s; longest right now: pattern 10212 for 10.1 s
+[compile] fold_v1 screening: 577/1365 patterns done (109 native, 468 prefilter, 0 isolated), 16 running, elapsed 15.2 s; longest right now: pattern 10226 for 14.2 s
+[compile] fold_v1 screening: 1359/1365 patterns done (861 native, 498 prefilter, 0 isolated), 6 running, elapsed 20.3 s
+[compile] fold_v1 screening: 1363/1365 patterns done (861 native, 502 prefilter, 0 isolated), 2 running, elapsed 25.5 s
+[compile] fold_v1: screening finished in 27.5 s: 861 native, 504 prefilter (488 downgraded from native, 483 with relaxed repeats), 0 isolated, 5 attempt(s) hit the time limit
+[compile] fold_v1: compiling 1365 patterns as 16 database shard(s) on 16 worker thread(s)
+[compile] fold_v1 compiling databases: 0 finished, 16 running, 0 waiting, elapsed 10.0 s
+[compile] fold_v1: database finished: 86 patterns, 5933 KiB, 16.1 s
+[compile] fold_v1: database finished: 86 patterns, 6282 KiB, 16.2 s
+[compile] fold_v1: database finished: 86 patterns, 7138 KiB, 16.4 s
+[compile] fold_v1: database finished: 85 patterns, 9086 KiB, 16.6 s
+[compile] fold_v1: database finished: 84 patterns, 2613 KiB, 16.8 s
+[compile] fold_v1: database finished: 85 patterns, 6042 KiB, 17.8 s
+[compile] fold_v1: database finished: 84 patterns, 4574 KiB, 17.8 s
+[compile] fold_v1: database finished: 85 patterns, 3193 KiB, 17.9 s
+[compile] fold_v1: database finished: 86 patterns, 5565 KiB, 18.2 s
+[compile] fold_v1: database finished: 85 patterns, 7972 KiB, 19.1 s
+[compile] fold_v1: database finished: 86 patterns, 4693 KiB, 19.1 s
+[compile] fold_v1: database finished: 84 patterns, 4370 KiB, 19.4 s
+[compile] fold_v1: database finished: 86 patterns, 4255 KiB, 19.6 s
+[compile] fold_v1 compiling databases: 13 finished, 3 running, 0 waiting, elapsed 20.2 s
+[compile] fold_v1: database finished: 86 patterns, 4228 KiB, 20.3 s
+[compile] fold_v1: database finished: 86 patterns, 6463 KiB, 20.4 s
+[compile] fold_v1: database finished: 85 patterns, 3298 KiB, 21.8 s
+[compile] fold_v1: 16 database(s) compiled in 22.0 s
+[compile] wrote rules.fold_v1.01.hsdb: 53 native + 32 prefilter patterns, 3193 KiB
+[compile] wrote rules.fold_v1.02.hsdb: 59 native + 27 prefilter patterns, 6282 KiB
+[compile] wrote rules.fold_v1.03.hsdb: 62 native + 24 prefilter patterns, 5565 KiB
+[compile] wrote rules.fold_v1.04.hsdb: 54 native + 32 prefilter patterns, 4693 KiB
+[compile] wrote rules.fold_v1.05.hsdb: 61 native + 25 prefilter patterns, 5933 KiB
+[compile] wrote rules.fold_v1.06.hsdb: 39 native + 46 prefilter patterns, 7972 KiB
+[compile] wrote rules.fold_v1.07.hsdb: 53 native + 31 prefilter patterns, 4370 KiB
+[compile] wrote rules.fold_v1.08.hsdb: 59 native + 26 prefilter patterns, 9086 KiB
+[compile] wrote rules.fold_v1.09.hsdb: 53 native + 32 prefilter patterns, 6042 KiB
+[compile] wrote rules.fold_v1.10.hsdb: 47 native + 39 prefilter patterns, 7138 KiB
+[compile] wrote rules.fold_v1.11.hsdb: 54 native + 32 prefilter patterns, 4255 KiB
+[compile] wrote rules.fold_v1.12.hsdb: 53 native + 32 prefilter patterns, 3298 KiB
+[compile] wrote rules.fold_v1.13.hsdb: 55 native + 31 prefilter patterns, 4228 KiB
+[compile] wrote rules.fold_v1.14.hsdb: 57 native + 27 prefilter patterns, 2613 KiB
+[compile] wrote rules.fold_v1.15.hsdb: 50 native + 34 prefilter patterns, 4574 KiB
+[compile] wrote rules.fold_v1.16.hsdb: 52 native + 34 prefilter patterns, 6463 KiB
+[compile] trans_v1: screening 135 patterns one by one on 16 worker thread(s), limit 15 s per attempt
+[compile] trans_v1: screening finished in 0.2 s: 135 native, 0 prefilter (0 downgraded from native, 0 with relaxed repeats), 0 isolated
+[compile] trans_v1: compiling 135 patterns as 3 database shard(s) on 3 worker thread(s)
+[compile] trans_v1: database finished: 45 patterns, 340 KiB, 0.2 s
+[compile] trans_v1: database finished: 45 patterns, 344 KiB, 0.2 s
+[compile] trans_v1: database finished: 45 patterns, 340 KiB, 0.2 s
+[compile] trans_v1: 3 database(s) compiled in 0.2 s
+[compile] wrote rules.trans_v1.01.hsdb: 45 native + 0 prefilter patterns, 340 KiB
+[compile] wrote rules.trans_v1.02.hsdb: 45 native + 0 prefilter patterns, 344 KiB
+[compile] wrote rules.trans_v1.03.hsdb: 45 native + 0 prefilter patterns, 340 KiB
+[compile] self-test: the compiled rule set loads and verifies on this machine
+{
+  "manifest": "/tmp/dist_order_test/linux/x86_64/1.0.0/manifest.json",
+  "patterns": 1500,
+  "native": 996,
+  "prefilter": 504,
+  "downgraded_to_prefilter": 488,
+  "relaxed_repeats": 483,
+  "failed": 0,
+  "databases": 19,
+  "jobs": 16,
+  "elapsed_s": 50.4,
+  "status": "ok"
+}
+note: 5 compiler thread(s) were abandoned at their time limit; exiting without waiting for them
+
+real	0m50.918s
+user	12m6.217s
+sys	0m7.897s

@@ -1,0 +1,46 @@
+# tr-morphological rules — PID-TRM-NNN
+# Auto-validated in CI (every pattern compiles; schema-checked).
+
+- id: PID-TRM-001
+  name: "Önceki talimatları yoksay"
+  category: tr-morphological
+  severity: high
+  lang: [tr]
+  flags: [i]
+  pattern: "(?:önceki|yukarıdaki|bütün|tüm|sistem)[^\\n]{0,25}(?:talimat|komut|kural|yönerge)\\w*[^\\n]{0,25}(?:yoksay|görmezden|unut|dikkate\\s+alma|boşver|geçersiz)"
+  maps_to: ["LLM01:2025", "AML.T0051.000"]
+  false_positive: "Turkish security docs may quote it; scope to untrusted input."
+  description: "Turkish instruction-override with suffix-tolerant stems."
+
+- id: PID-TRM-002
+  name: "Kullanıcıya söyleme / gizlice"
+  category: tr-morphological
+  severity: high
+  lang: [tr]
+  flags: [i]
+  pattern: "kullanıcı(?:ya|dan)[^\\n]{0,25}(?:söyleme|haber\\s+verme|bildirme|gösterme|gizle)|\\b(?:gizlice|sessizce)\\b"
+  maps_to: ["LLM01:2025"]
+  false_positive: "Low FP."
+  description: "Turkish stealth/concealment directive."
+
+- id: PID-TRM-003
+  name: "Parola / gizli anahtar"
+  category: tr-morphological
+  severity: medium
+  lang: [tr]
+  flags: [i]
+  pattern: "\\b(?:parola|şifre|gizli\\s+anahtar|api\\s+anahtar\\w*)\\b"
+  maps_to: ["LLM06:2025", "LLM02:2025"]
+  false_positive: "Appears in legitimate docs; medium."
+  description: "Turkish credential references."
+
+- id: PID-TRM-004
+  name: "Sınırsız / kısıtlama yok"
+  category: tr-morphological
+  severity: medium
+  lang: [tr]
+  flags: [i]
+  pattern: "(?:sınırsız|kısıtlama\\s+yok|kural\\s+tanımıyorsun|her\\s+şeyi\\s+yapabilirsin)"
+  maps_to: ["LLM01:2025", "AML.T0054"]
+  false_positive: "Medium."
+  description: "Turkish persona-jailbreak framing."

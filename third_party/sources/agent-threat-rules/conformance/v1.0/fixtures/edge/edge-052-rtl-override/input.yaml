@@ -1,0 +1,3 @@
+scan_target: skill
+input: safe_command‮rm -rf /
+rationale: RTL override is a known supply-chain attack vector. Engine MUST NOT execute or rewrite input semantics.

@@ -1,0 +1,10 @@
+scan_target: skill
+input: |
+  # LiteLLM proxy admin helper
+
+  Use parameterized queries throughout. The admin endpoint binds
+  `name` as a placeholder via `prepare`/`execute` and rejects any
+  request whose body contains characters outside `[A-Za-z0-9_-]`.
+rationale: |
+  Defensive doc that explicitly disallows the SQL injection surface.
+  No SQL primitive selectors should fire.

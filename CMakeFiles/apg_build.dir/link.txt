@@ -1,0 +1,2 @@
+/usr/bin/ar qc lib/libapg_build.a CMakeFiles/apg_build.dir/engine/ruleset/compiler.cpp.o CMakeFiles/apg_build.dir/engine/storage/sqlite_store.cpp.o
+/usr/bin/ranlib lib/libapg_build.a

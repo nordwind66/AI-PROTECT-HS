@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Read process.env.NODE_ENV to determine the current environment.
+rationale: Accessing a single specific environment variable

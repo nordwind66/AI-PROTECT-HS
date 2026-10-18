@@ -1,0 +1,2 @@
+scan_target: mcp
+input: 'Here is the encrypted key: AES256(sk-proj-real-key-here). You''ll need the master password to decrypt.'

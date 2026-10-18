@@ -1,0 +1,3 @@
+scan_target: skill
+input: normal text éè ÀÁ mixed encoding
+rationale: Real-world inputs often have mixed encoding. Engine MUST process without crash.

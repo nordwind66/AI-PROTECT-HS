@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG "CMakeFiles/ai-prompt-guard.dir/cli/main.cpp.o" "CMakeFiles/ai-prompt-guard.dir/cli/bench.cpp.o" -o bin/ai-prompt-guard  /usr/lib/x86_64-linux-gnu/libpcre2-8.so /usr/lib/x86_64-linux-gnu/libhs.so lib/libapg_build.a lib/libai_prompt_guard.a /usr/lib/x86_64-linux-gnu/libpcre2-8.so /usr/lib/x86_64-linux-gnu/libhs.so /usr/lib/x86_64-linux-gnu/libsqlite3.so 

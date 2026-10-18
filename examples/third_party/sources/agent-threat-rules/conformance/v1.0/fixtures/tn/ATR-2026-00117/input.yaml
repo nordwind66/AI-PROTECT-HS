@@ -1,0 +1,3 @@
+scan_target: mcp
+input: The supervisor agent coordinates tasks between the worker agents.
+rationale: Description of agent architecture

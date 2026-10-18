@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Retrying attempt 15 of 10. The request still returns the same error.
+rationale: Retry counter exceeding stated maximum

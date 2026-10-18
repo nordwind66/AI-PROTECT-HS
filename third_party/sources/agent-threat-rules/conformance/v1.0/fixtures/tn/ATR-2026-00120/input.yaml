@@ -1,0 +1,6 @@
+scan_target: skill
+input: |-
+  # Prompt Injection Defense
+
+  This skill teaches you how to defend against prompt injection attacks by validating all inputs.
+rationale: Educational content about prompt injection defense

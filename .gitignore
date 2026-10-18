@@ -1,0 +1,39 @@
+# build products
+/build/
+/dist/
+CMakeUserPresets.json
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# bare git caches used to materialise the locked upstream commits (disposable; `rules.py sources sync --locked` re-creates them)
+/third_party/.cache/
+
+# scratch / local work
+/.scratch/
+*.tmp
+*.building
+*.before-restore
+
+# SQLite side files of a database that is open somewhere (the delivered database is a single self-contained file)
+*.db-journal
+*.db-wal
+*.db-shm
+
+# generated benchmark output (numbers must stay next to the host description that produced them; commit deliberately)
+/reports/bench_*
+
+# backups of files overwritten by a sync to the Linux machine
+/.sync-backup/

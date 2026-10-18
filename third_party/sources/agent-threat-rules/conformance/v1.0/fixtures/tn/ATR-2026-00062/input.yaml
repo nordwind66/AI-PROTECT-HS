@@ -1,0 +1,4 @@
+scan_target: mcp
+input:
+  tool_name: debugger
+  tool_args: '{"breakpoint": "line_42", "mode": "step"}'

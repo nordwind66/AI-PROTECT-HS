@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Based on my analysis, I'm fairly confident this approach will work, but I recommend a human review of the edge cases.
+rationale: Agent expressing appropriate confidence with review recommendation

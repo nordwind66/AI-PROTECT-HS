@@ -1,0 +1,24 @@
+# stealth rules — PID-STL-NNN
+# Auto-validated in CI (every pattern compiles; schema-checked).
+
+- id: PID-STL-001
+  name: "Don't tell the user"
+  category: stealth
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "do\\s*n['o]?t\\s+(?:mention|tell|inform|reveal|notify|show)\\b[^\\n]{0,40}\\buser|without\\s+(?:telling|informing|notifying)\\s+(?:the\\s+)?user"
+  maps_to: ["LLM01:2025", "AML.T0051.000"]
+  false_positive: "Low FP; rarely legitimate."
+  description: "Concealment directive — a strong malicious signal."
+
+- id: PID-STL-002
+  name: "Secretly / silently perform action"
+  category: stealth
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "(?:secretly|silently|quietly)\\s+(?:send|copy|read|forward|post|upload|exfiltrate|email)"
+  maps_to: ["LLM01:2025", "LLM06:2025"]
+  false_positive: "'silently' can appear in logging contexts ('silently ignore'); tied to send/copy verbs here."
+  description: "Covert action directive."

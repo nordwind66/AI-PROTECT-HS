@@ -1,0 +1,2 @@
+scan_target: mcp
+input: The environment variable is stored at process.env.OPENAI_API_KEY but I cannot access its value.

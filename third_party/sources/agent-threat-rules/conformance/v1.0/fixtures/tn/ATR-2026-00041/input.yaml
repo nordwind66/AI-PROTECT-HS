@@ -1,0 +1,3 @@
+scan_target: mcp
+input: I have completed the analysis using the three databases you specified. Here are the results.
+rationale: Agent working within specified scope

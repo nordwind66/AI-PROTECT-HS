@@ -1,0 +1,13 @@
+scan_target: skill
+input: |
+  # Repo bootstrap
+
+  README:
+
+      To get started, run `npm install` then `npm test`. There are no
+      Hooks settings shipped with this repository and the trust dialog
+      governs all subsequent agent actions.
+rationale: |
+  README that mentions the word "Hooks" in prose but ships no
+  `.claude/settings.json` Hooks payload. The literal-schema anchor must
+  not fire.

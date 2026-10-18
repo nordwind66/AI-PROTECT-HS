@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-prompt-guard.invalid/schemas/info.schema.json",
+  "title": "AI Prompt Guard engine / rule-set description (apg_get_info)",
+  "type": "object",
+  "required": ["schema_version", "engine_version", "abi_version", "norm_tables_version", "ruleset", "backend", "policy", "limits"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "engine_version": { "type": "string" },
+    "abi_version": { "type": "integer", "description": "(major << 16) | (minor << 8) | patch" },
+    "norm_tables_version": { "type": "integer" },
+    "ruleset": {
+      "type": "object",
+      "required": ["version", "content_digest", "snapshot_sha256", "rules", "patterns", "patterns_native", "patterns_prefilter",
+                   "patterns_failed", "failed_pattern_ids", "manifest_path", "built_at", "loaded_at"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string" },
+        "content_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "snapshot_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "rules": { "type": "integer", "minimum": 0 },
+        "patterns": { "type": "integer", "minimum": 0 },
+        "patterns_native": { "type": "integer", "minimum": 0 },
+        "patterns_prefilter": { "type": "integer", "minimum": 0 },
+        "patterns_failed": { "type": "integer", "minimum": 0, "description": "Patterns the compiler had to isolate (their leaves can never match). 0 for a complete build." },
+        "failed_pattern_ids": { "type": "array", "items": { "type": "integer" } },
+        "manifest_path": { "type": "string" },
+        "built_at": { "type": "string" },
+        "loaded_at": { "type": "string" }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "hyperscan_version", "pcre2_version", "cpu_target", "os", "arch"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "enum": ["hyperscan", "pcre2_fallback"] },
+        "hyperscan_version": { "type": "string" },
+        "pcre2_version": { "type": "string" },
+        "cpu_target": { "type": "string" },
+        "os": { "type": "string" },
+        "arch": { "type": "string" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["allow_block", "on_error", "on_verify_error"],
+      "additionalProperties": false,
+      "properties": {
+        "allow_block": { "type": "boolean" },
+        "on_error": { "type": "string" },
+        "on_verify_error": { "type": "string" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": ["max_text_bytes", "max_request_bytes", "max_hits", "max_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "max_text_bytes": { "type": "integer" },
+        "max_request_bytes": { "type": "integer" },
+        "max_hits": { "type": "integer" },
+        "max_fields": { "type": "integer" }
+      }
+    }
+  }
+}

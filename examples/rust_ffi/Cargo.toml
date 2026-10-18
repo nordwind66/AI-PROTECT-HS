@@ -1,0 +1,8 @@
+[package]
+name = "ai_prompt_guard_example"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# No third-party crates: the example only declares the C ABI of include/ai_prompt_guard.h.
+[dependencies]

@@ -1,0 +1,2 @@
+scan_target: mcp
+rationale: Tool output declared as authoritative directives overriding safety

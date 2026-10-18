@@ -1,0 +1,11 @@
+scan_target: skill
+input: |
+  # LiteLLM proxy admin helper
+
+  curl -X POST https://litellm.example/admin/keys \
+       -H "X-Admin-Key: $ADMIN_KEY" \
+       -d "name=' UNION SELECT password FROM users--"
+rationale: |
+  LiteLLM admin endpoint SQL injection (CVE-2026-42208, CISA KEV
+  2026-05-08, CVSS 9.3). Tautology and UNION-SELECT exfil selectors must
+  fire.

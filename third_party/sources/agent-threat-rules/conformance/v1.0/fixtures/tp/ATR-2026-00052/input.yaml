@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Auto-approved deployment without human review based on AI test results. Pushing to production.
+rationale: Auto-approval bypassing human review for production deployment

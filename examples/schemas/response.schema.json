@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-prompt-guard.invalid/schemas/response.schema.json",
+  "title": "AI Prompt Guard scan result (apg_scan_text / apg_scan_json)",
+  "description": "UTF-8 JSON document allocated by the library (release with apg_free_buffer). Problems with the TEXT (invalid UTF-8, oversize text, scan limits) are reported inside this document with status=\"error\" and a decision derived from policy.on_error; the C function then still returns APG_OK. The document never contains the scanned text.",
+  "type": "object",
+  "required": ["schema_version", "request_id", "status", "decision", "score", "risk_level", "ruleset_version", "engine_version",
+               "backend", "matched_rules", "needs_context", "inputs", "warnings", "duration_us", "error_code"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "request_id": { "type": ["string", "null"] },
+    "status": { "enum": ["ok", "error"] },
+    "decision": {
+      "enum": ["allow", "review", "alert", "block"],
+      "description": "allow < review < alert < block. 'block' is only produced when policy.allow_block=true (default: alert-only)."
+    },
+    "score": { "type": "number", "minimum": 0, "maximum": 1, "description": "Noisy-OR combination of the risks of the matched rules (rules of one score_group count once, with their maximum). 0 for status=error." },
+    "risk_level": { "enum": ["none", "info", "low", "medium", "high", "critical"] },
+    "ruleset_version": { "type": "string" },
+    "engine_version": { "type": "string" },
+    "backend": { "enum": ["hyperscan", "pcre2_fallback"], "description": "The engine that produced the result. 'pcre2_fallback' is an explicit, slower backend, never reported as hyperscan." },
+    "matched_rules": { "type": "array", "items": { "$ref": "#/$defs/matched_rule" }, "description": "Sorted by risk, descending." },
+    "needs_context": { "type": "array", "items": { "$ref": "#/$defs/needs_context" }, "description": "Rules that matched (or partly matched) but could not be evaluated completely: uncertain state, never counted in the score." },
+    "inputs": {
+      "type": "object",
+      "required": ["text_bytes"],
+      "additionalProperties": false,
+      "properties": {
+        "text_bytes": { "type": "integer", "minimum": 0 },
+        "fields_checked": { "type": "array", "items": { "type": "string" } },
+        "fields_ignored": { "type": "array", "items": { "type": "string" } },
+        "views_scanned": { "type": "array", "items": { "enum": ["raw", "fold_v1", "trans_v1"] } }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" }, "maxItems": 20 },
+    "duration_us": { "type": "integer", "minimum": 0 },
+    "error_code": {
+      "type": ["string", "null"],
+      "enum": [null, "invalid_utf8", "input_too_large", "hit_limit_exceeded"]
+    }
+  },
+  "if": { "properties": { "status": { "const": "error" } } },
+  "then": {
+    "properties": {
+      "error_code": { "type": "string" },
+      "score": { "const": 0 },
+      "matched_rules": { "maxItems": 0 },
+      "needs_context": { "maxItems": 0 }
+    }
+  },
+  "else": {
+    "properties": {
+      "error_code": { "type": "null" },
+      "inputs": { "required": ["text_bytes", "fields_checked", "fields_ignored", "views_scanned"] }
+    }
+  },
+  "$defs": {
+    "matched_rule": {
+      "type": "object",
+      "required": ["rule_id", "pattern_ids", "category", "severity", "source", "confidence", "weight", "risk", "counted"],
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": { "type": "string", "pattern": "^AIPS-[A-Z]{2}-[0-9]{4}$" },
+        "pattern_ids": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+        "category": { "type": "string" },
+        "severity": { "enum": ["info", "low", "medium", "high", "critical"] },
+        "source": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "risk": { "type": "number", "minimum": 0, "maximum": 1, "description": "weight x confidence x source multiplier" },
+        "counted": { "type": "boolean", "description": "false: another rule of the same score_group has a higher risk" },
+        "name": { "type": "string", "description": "Only with output.include_names=true" },
+        "evidence": {
+          "type": "array",
+          "description": "Only with output.include_offsets=true (default). Offsets only - never the matched text.",
+          "items": {
+            "type": "object",
+            "required": ["pattern_id", "field", "view", "end_view", "end_original"],
+            "additionalProperties": false,
+            "properties": {
+              "pattern_id": { "type": "integer", "minimum": 1 },
+              "field": { "type": "string" },
+              "view": { "enum": ["raw", "fold_v1", "trans_v1"] },
+              "end_view": { "type": "integer", "minimum": 0, "description": "End byte offset of the (first) match in the scanned view" },
+              "end_original": { "type": "integer", "minimum": 0, "description": "Best-effort end byte offset in the ORIGINAL text" }
+            }
+          }
+        }
+      }
+    },
+    "needs_context": {
+      "type": "object",
+      "required": ["rule_id", "category", "severity", "reason", "missing", "pattern_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": { "type": "string" },
+        "category": { "type": "string" },
+        "severity": { "enum": ["info", "low", "medium", "high", "critical"] },
+        "reason": { "enum": ["context_missing", "field_missing"] },
+        "missing": { "type": "array", "items": { "type": "string" }, "description": "context keys (context_missing) or rule fields (field_missing) that were not supplied" },
+        "pattern_ids": { "type": "array", "items": { "type": "integer", "minimum": 1 } }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1, "request_id": null, "status": "ok", "decision": "alert", "score": 0.72, "risk_level": "high",
+      "ruleset_version": "1.0.0", "engine_version": "1.0.0", "backend": "hyperscan",
+      "matched_rules": [
+        { "rule_id": "AIPS-PI-0001", "pattern_ids": [10001], "category": "prompt_injection", "severity": "high", "source": "user_input",
+          "confidence": 0.9, "weight": 0.8, "risk": 0.72, "counted": true,
+          "evidence": [ { "pattern_id": 10001, "field": "user_input", "view": "raw", "end_view": 32, "end_original": 32 } ] }
+      ],
+      "needs_context": [],
+      "inputs": { "text_bytes": 32, "fields_checked": ["content", "user_input"], "fields_ignored": [], "views_scanned": ["raw"] },
+      "warnings": [], "duration_us": 41, "error_code": null
+    }
+  ]
+}

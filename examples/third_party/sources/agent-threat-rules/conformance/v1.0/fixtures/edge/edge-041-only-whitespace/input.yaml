@@ -1,0 +1,3 @@
+scan_target: skill
+input: "   \n\t\n   \n"
+rationale: Whitespace-only input MUST evaluate to no_match without error.

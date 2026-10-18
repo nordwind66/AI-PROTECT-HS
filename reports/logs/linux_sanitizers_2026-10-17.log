@@ -1,0 +1,116 @@
+# Produced by the development session over SSH on the user's Linux machine (Ubuntu 24.04, GCC 13.3.0), 2026-10-17. Not edited.
+# ASan+UBSan: bash scripts/linux/build.sh --asan ; build/linux-asan/bin/apg_tests
+# TSan: cmake -S . -B build/linux-tsan -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-fsanitize=thread -g" ... ; build/linux-tsan/bin/apg_tests
+#
+=== ASan+UBSan build: compiler warnings (grep)
+5
+=== ASan+UBSan unit tests
+[ RUN  ] sha256_known_vectors
+[  OK  ] sha256_known_vectors
+[ RUN  ] utf8_validation
+[  OK  ] utf8_validation
+[ RUN  ] json_parse_and_types
+[  OK  ] json_parse_and_types
+[ RUN  ] json_rejects_bad_input
+[  OK  ] json_rejects_bad_input
+[ RUN  ] json_writer_and_dump
+[  OK  ] json_writer_and_dump
+[ RUN  ] normalize_matches_golden_vectors
+[  OK  ] normalize_matches_golden_vectors
+[ RUN  ] normalize_ascii_is_unchanged_without_copy
+[  OK  ] normalize_ascii_is_unchanged_without_copy
+[ RUN  ] config_validation
+[  OK  ] config_validation
+[ RUN  ] relax_repeats_rewrites_only_big_counted_repeats
+[  OK  ] relax_repeats_rewrites_only_big_counted_repeats
+[ RUN  ] job_pool_runs_jobs_in_parallel_and_delivers_follow_up_jobs
+[  OK  ] job_pool_runs_jobs_in_parallel_and_delivers_follow_up_jobs
+[ RUN  ] job_pool_gives_up_on_jobs_that_exceed_their_deadline
+[  OK  ] job_pool_gives_up_on_jobs_that_exceed_their_deadline
+[ RUN  ] job_pool_turns_executor_exceptions_into_failed_results
+[  OK  ] job_pool_turns_executor_exceptions_into_failed_results
+[ RUN  ] abi_identification
+[  OK  ] abi_identification
+[ RUN  ] create_failures_set_outputs_and_diagnostics
+[  OK  ] create_failures_set_outputs_and_diagnostics
+[ RUN  ] detects_normalised_and_mixed_language_attacks
+[  OK  ] detects_normalised_and_mixed_language_attacks
+[ RUN  ] composite_conditions_and_prefilter_confirmation
+[  OK  ] composite_conditions_and_prefilter_confirmation
+[ RUN  ] context_gating_reports_needs_context
+[  OK  ] context_gating_reports_needs_context
+[ RUN  ] structured_request_fields_and_validation
+[  OK  ] structured_request_fields_and_validation
+[ RUN  ] invalid_utf8_and_limits_are_structured_results
+[  OK  ] invalid_utf8_and_limits_are_structured_results
+[ RUN  ] policy_thresholds_and_block_are_explicit
+[  OK  ] policy_thresholds_and_block_are_explicit
+[ RUN  ] tampered_artifacts_are_rejected
+[  OK  ] tampered_artifacts_are_rejected
+[ RUN  ] reload_switches_atomically_and_failed_reload_keeps_old_rules
+[  OK  ] reload_switches_atomically_and_failed_reload_keeps_old_rules
+[ RUN  ] concurrent_scans_during_hot_reload
+[  OK  ] concurrent_scans_during_hot_reload
+[ RUN  ] repeated_create_destroy_is_leak_free_in_principle
+[  OK  ] repeated_create_destroy_is_leak_free_in_principle
+
+24 test(s) run, 0 failed
+
+real	0m0.722s
+user	0m0.397s
+sys	0m0.088s
+=== TSan unit tests (ThreadSanitizer warnings: 0)
+[ RUN  ] sha256_known_vectors
+[  OK  ] sha256_known_vectors
+[ RUN  ] utf8_validation
+[  OK  ] utf8_validation
+[ RUN  ] json_parse_and_types
+[  OK  ] json_parse_and_types
+[ RUN  ] json_rejects_bad_input
+[  OK  ] json_rejects_bad_input
+[ RUN  ] json_writer_and_dump
+[  OK  ] json_writer_and_dump
+[ RUN  ] normalize_matches_golden_vectors
+[  OK  ] normalize_matches_golden_vectors
+[ RUN  ] normalize_ascii_is_unchanged_without_copy
+[  OK  ] normalize_ascii_is_unchanged_without_copy
+[ RUN  ] config_validation
+[  OK  ] config_validation
+[ RUN  ] relax_repeats_rewrites_only_big_counted_repeats
+[  OK  ] relax_repeats_rewrites_only_big_counted_repeats
+[ RUN  ] job_pool_runs_jobs_in_parallel_and_delivers_follow_up_jobs
+[  OK  ] job_pool_runs_jobs_in_parallel_and_delivers_follow_up_jobs
+[ RUN  ] job_pool_gives_up_on_jobs_that_exceed_their_deadline
+[  OK  ] job_pool_gives_up_on_jobs_that_exceed_their_deadline
+[ RUN  ] job_pool_turns_executor_exceptions_into_failed_results
+[  OK  ] job_pool_turns_executor_exceptions_into_failed_results
+[ RUN  ] abi_identification
+[  OK  ] abi_identification
+[ RUN  ] create_failures_set_outputs_and_diagnostics
+[  OK  ] create_failures_set_outputs_and_diagnostics
+[ RUN  ] detects_normalised_and_mixed_language_attacks
+[  OK  ] detects_normalised_and_mixed_language_attacks
+[ RUN  ] composite_conditions_and_prefilter_confirmation
+[  OK  ] composite_conditions_and_prefilter_confirmation
+[ RUN  ] context_gating_reports_needs_context
+[  OK  ] context_gating_reports_needs_context
+[ RUN  ] structured_request_fields_and_validation
+[  OK  ] structured_request_fields_and_validation
+[ RUN  ] invalid_utf8_and_limits_are_structured_results
+[  OK  ] invalid_utf8_and_limits_are_structured_results
+[ RUN  ] policy_thresholds_and_block_are_explicit
+[  OK  ] policy_thresholds_and_block_are_explicit
+[ RUN  ] tampered_artifacts_are_rejected
+[  OK  ] tampered_artifacts_are_rejected
+[ RUN  ] reload_switches_atomically_and_failed_reload_keeps_old_rules
+[  OK  ] reload_switches_atomically_and_failed_reload_keeps_old_rules
+[ RUN  ] concurrent_scans_during_hot_reload
+[  OK  ] concurrent_scans_during_hot_reload
+[ RUN  ] repeated_create_destroy_is_leak_free_in_principle
+[  OK  ] repeated_create_destroy_is_leak_free_in_principle
+
+24 test(s) run, 0 failed
+
+real	0m1.750s
+user	0m0.531s
+sys	0m0.040s

@@ -1,0 +1,2 @@
+scan_target: mcp
+rationale: Agent explicitly quoting its system prompt

@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "corpus_version": "1.0.0",
+  "spec_version": "1.0",
+  "level": "L1-baseline",
+  "description": "ATR Baseline Conformance Test Corpus v1.0. Every conformant engine must pass this corpus to claim L1 baseline conformance.",
+  "license": "MIT",
+  "build_timestamp": "2026-05-25T00:00:00Z",
+  "rule_corpus_version_required": "agent-threat-rules>=3.1.0",
+  "fixture_sources": {
+    "attack-fixtures": {
+      "path": "attack-fixtures/",
+      "format": "JSON files, one event per file conforming to spec/schema/event.schema.json input form",
+      "expected_count_at_v1_0_0": "≥50 (initial corpus seeded from existing tests/attack-corpus/)",
+      "expected_fires": "non-empty set of rule IDs per fixture"
+    },
+    "benign-fixtures": {
+      "path": "benign-fixtures/",
+      "format": "SKILL.md text files, one fixture per file",
+      "expected_count_at_v1_0_0": "432 (sourced from data/skill-benchmark/benign/)",
+      "expected_fires": "EMPTY SET — any rule fire is a false positive"
+    },
+    "language-detection-fixtures": {
+      "path": "language-detection-fixtures/v1.0.json",
+      "format": "JSON array of {text, expected_language_code}",
+      "expected_count_at_v1_0_0": "≥200",
+      "expected_match": "exact ISO 639-1 / 639-3 code per spec/atr-language-detection-v1.0.md"
+    },
+    "research-mentions": {
+      "path": "research-mentions/corpus.jsonl",
+      "format": "JSONL, one record per line",
+      "expected_count_at_v1_0_0": "sourced from data/research-mentions/corpus.jsonl",
+      "expected_fires": "EMPTY SET — text MENTIONS attacks (papers, READMEs, blogs) but is not an attack"
+    }
+  },
+  "conformance_thresholds": {
+    "precision_min": 1.00,
+    "recall_min": 0.95,
+    "language_detection_accuracy_min": 1.00,
+    "fp_count_max": 0
+  },
+  "linked_references": [
+    "../README.md",
+    "../SIGNING.md",
+    "../expected-results.schema.json",
+    "../../atr-event-v1.0.md",
+    "../../atr-language-detection-v1.0.md",
+    "../../atr-schema.yaml"
+  ],
+  "build_provenance": {
+    "builder": "Adam Lin <adam@agentthreatrule.org>",
+    "bootstrap_phase": true,
+    "tsc_ratified": false,
+    "notes": "v1.0.0 manifest is the bootstrap fixture before TSC seating per governance/CHARTER.md § 11. Source-of-truth fixtures reference the existing data/skill-benchmark/ and data/research-mentions/ paths to avoid duplication during bootstrap. On TSC ratification + Phase 2 completion, fixtures will be COPIED (not referenced) into spec/conformance/baseline/ so the corpus is self-contained."
+  }
+}

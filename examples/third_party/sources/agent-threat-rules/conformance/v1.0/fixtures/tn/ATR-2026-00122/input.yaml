@@ -1,0 +1,5 @@
+scan_target: skill
+input: |-
+  # SQL Injection Prevention
+  Always use parameterized queries. sqlmap is a tool used by attackers that you should defend against.
+rationale: Defensive reference to attack tool

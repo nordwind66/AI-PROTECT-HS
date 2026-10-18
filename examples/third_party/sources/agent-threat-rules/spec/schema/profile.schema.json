@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.agentthreatrule.org/profile/v1.0/schema.json",
+  "title": "ATR Profile v1.0",
+  "description": "Machine-readable schema for ATR profile (rule-set composition). Normative spec at spec/atr-profile-v1.0.md. License: MIT.",
+  "type": "object",
+  "required": ["profile", "inclusions"],
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "id",
+        "title",
+        "version",
+        "description",
+        "author",
+        "date",
+        "license",
+        "status",
+        "conformance_bound"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "1.0"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{2,63}$",
+          "description": "Globally unique profile identifier (kebab-case)."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$",
+          "description": "SemVer 2.0 profile version."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 20
+        },
+        "author": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier or full license URL.",
+          "examples": ["CC-BY-4.0", "MIT", "Apache-2.0"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "stable", "deprecated"]
+        },
+        "conformance_bound": {
+          "type": "object",
+          "required": [
+            "spec_version_min",
+            "minimum_rule_coverage",
+            "minimum_engine_passing"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "spec_version_min": {
+              "type": "string",
+              "pattern": "^\\d+\\.\\d+$"
+            },
+            "spec_version_max": {
+              "type": ["string", "null"],
+              "pattern": "^\\d+\\.\\d+$"
+            },
+            "minimum_rule_coverage": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            },
+            "minimum_engine_passing": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            }
+          }
+        }
+      }
+    },
+    "inclusions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/selector"
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/selector"
+      }
+    },
+    "resolved_rules_summary": {
+      "type": "object",
+      "description": "Optional informational summary populated at profile-resolution time.",
+      "additionalProperties": true,
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "by_category": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]+$": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "selector": {
+      "type": "object",
+      "oneOf": [
+        {
+          "required": ["rule_id"],
+          "properties": {
+            "rule_id": {
+              "type": "string",
+              "pattern": "^ATR-(?:[A-Z]{2}-)?[0-9]{4}-[0-9]{5}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["rule_id_pattern"],
+          "properties": {
+            "rule_id_pattern": {
+              "type": "string",
+              "description": "Glob pattern matching ATR rule IDs."
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["category"],
+          "properties": {
+            "category": {
+              "type": "string",
+              "description": "Top-level category from spec/category-registry/v1.0.yaml or a reserved namespace prefix."
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["tag_match"],
+          "properties": {
+            "tag_match": {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  {"type": "string"},
+                  {"type": "array", "items": {"type": "string"}}
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["profile"],
+          "properties": {
+            "profile": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{2,63}@\\d+\\.\\d+\\.\\d+$",
+              "description": "Profile inclusion in form <profile-id>@<version> for composition."
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["rule_status"],
+          "properties": {
+            "rule_status": {
+              "type": "string",
+              "enum": ["draft", "experimental", "stable", "deprecated"]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

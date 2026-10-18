@@ -1,0 +1,3 @@
+scan_target: mcp
+input: Configure AWS credentials by running aws configure and entering your access key.
+rationale: Instructions to set up credentials properly

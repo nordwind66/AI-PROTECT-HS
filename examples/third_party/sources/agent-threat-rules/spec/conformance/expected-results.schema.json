@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.agentthreatrule.org/conformance/v1.0/expected-results.schema.json",
+  "title": "ATR Conformance Expected Results v1.0",
+  "description": "Schema for the canonical expected-results.json file shipped with each conformance level (baseline, profiles, correlation), AND for engine-results.json reports produced by implementations under test.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "corpus_version",
+    "spec_version",
+    "level",
+    "fixtures"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "corpus_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "spec_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "level": {
+      "type": "string",
+      "enum": ["L1-baseline", "L2-profile", "L3-correlation"]
+    },
+    "engine_id": {
+      "type": "string",
+      "description": "Only present in engine-results.json reports. Format: <vendor>/<product>/<version>."
+    },
+    "engine_run_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Only present in engine-results.json reports."
+    },
+    "rule_corpus_version_used": {
+      "type": "string",
+      "description": "ATR rule corpus version the engine loaded (e.g., agent-threat-rules@3.1.0)."
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["fixture_id", "fixture_path"],
+        "properties": {
+          "fixture_id": {
+            "type": "string",
+            "description": "Unique identifier within this corpus, typically slug of fixture filename."
+          },
+          "fixture_path": {
+            "type": "string",
+            "description": "Path relative to spec/conformance/<level>/ root."
+          },
+          "input_summary": {
+            "type": "string",
+            "description": "1-line description of what this fixture exercises."
+          },
+          "expected_rules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^ATR-(?:COR-)?(?:[A-Z]{2}-)?[0-9]{4}-[0-9]{5}$"
+            },
+            "description": "Rule IDs that MUST fire on this fixture. Empty array = MUST NOT fire any rule (TN fixture)."
+          },
+          "expected_event_partial": {
+            "type": "object",
+            "description": "Optional partial event match — engine output must contain these key-value pairs. Useful for asserting matched_field, category, severity uplift."
+          },
+          "expected_language_code": {
+            "type": "string",
+            "pattern": "^([a-z]{2}(?:-[A-Z][a-z]{3}|-[A-Z]{2})?|und)$",
+            "description": "For language-detection fixtures only: the expected ISO 639-1 / 639-3 code."
+          },
+          "engine_observed": {
+            "type": "object",
+            "description": "Only present in engine-results.json reports. The actual observation from the engine under test.",
+            "properties": {
+              "rules_fired": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^ATR-(?:COR-)?(?:[A-Z]{2}-)?[0-9]{4}-[0-9]{5}$"
+                }
+              },
+              "language_detected": {
+                "type": "string"
+              },
+              "pass": {"type": "boolean"},
+              "miss_reason": {
+                "type": "string",
+                "description": "Human-readable reason if pass=false."
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Only present in engine-results.json reports.",
+      "properties": {
+        "total_fixtures": {"type": "integer", "minimum": 0},
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "precision": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "recall": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "language_detection_accuracy": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "conformance_claim": {
+          "type": "string",
+          "enum": ["pass", "fail", "partial"]
+        }
+      }
+    }
+  }
+}

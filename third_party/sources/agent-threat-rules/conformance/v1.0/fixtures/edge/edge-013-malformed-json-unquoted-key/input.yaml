@@ -1,0 +1,3 @@
+scan_target: skill
+input: '{command: "echo hi"}'
+rationale: Unquoted key violates RFC 8259. Engine MUST surface the error.

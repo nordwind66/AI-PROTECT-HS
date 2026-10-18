@@ -1,0 +1,3 @@
+scan_target: skill
+input: '{"command": "test",}'
+rationale: Trailing comma is invalid JSON. Engine MUST surface the error.

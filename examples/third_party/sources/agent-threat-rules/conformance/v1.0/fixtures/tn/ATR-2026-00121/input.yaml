@@ -1,0 +1,3 @@
+scan_target: skill
+input: Store your AWS credentials securely using environment variables, never in source code.
+rationale: Documentation about credential management

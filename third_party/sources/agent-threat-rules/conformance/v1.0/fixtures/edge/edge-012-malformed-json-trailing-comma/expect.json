@@ -1,0 +1,7 @@
+{
+  "outcome": "graceful_error_or_no_match",
+  "error_kind_allowed": [
+    "parse_error",
+    "json_error"
+  ]
+}

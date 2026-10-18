@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atr-inspect-evals"
+version = "0.1.0"
+description = "UK AISI Inspect @task wrapper for the Agent Threat Rules (ATR) corpus."
+requires-python = ">=3.10"
+license = {text = "MIT"}
+readme = "python/inspect_evals/README.md"
+authors = [
+    {name = "ATR Community"},
+]
+keywords = ["atr", "inspect-ai", "agent-security", "prompt-injection", "evals"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = [
+    "inspect-ai>=0.3",
+    "pyyaml>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Agent-Threat-Rule/agent-threat-rules"
+Repository = "https://github.com/Agent-Threat-Rule/agent-threat-rules"
+
+[tool.setuptools]
+# This package only ships the Inspect task wrapper; the rest of the repo is
+# TypeScript (Node/npm). The `pyatr` Python package lives in `python/` and is
+# published separately to PyPI.
+py-modules = []

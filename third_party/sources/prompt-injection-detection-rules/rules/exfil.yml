@@ -1,0 +1,46 @@
+# exfil rules — PID-EXF-NNN
+# Auto-validated in CI (every pattern compiles; schema-checked).
+
+- id: PID-EXF-001
+  name: "Sensitive credential path"
+  category: exfil
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "\\.env\\b|/\\.ssh/|\\bid_rsa\\b|/\\.aws/|\\.aws/credentials|\\.netrc\\b|\\.git-credentials|/etc/passwd"
+  maps_to: ["LLM06:2025", "AML.T0057"]
+  false_positive: "Fires on docs that say 'never commit .env'; scope to instructions/tool output."
+  description: "References to secret files an extension shouldn't read."
+
+- id: PID-EXF-002
+  name: "Request-catcher / webhook egress"
+  category: exfil
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "https?://[^\\s'\\\"]*(?:webhook\\.site|requestbin|pipedream\\.net|burpcollaborator|interact\\.sh|oast\\.|dnslog|pastebin|beacon|exfil)"
+  maps_to: ["LLM06:2025", "AML.T0024"]
+  false_positive: "Low FP."
+  description: "Outbound channel to a data-catcher host."
+
+- id: PID-EXF-003
+  name: "Raw-IP egress (non-private)"
+  category: exfil
+  severity: medium
+  lang: [en]
+  flags: [i]
+  pattern: "https?://(?!127\\.|0\\.|10\\.|192\\.168\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)\\d{1,3}(?:\\.\\d{1,3}){3}\\b"
+  maps_to: ["LLM06:2025"]
+  false_positive: "Some infra legitimately uses raw IPs; medium."
+  description: "Hardcoded public raw-IP endpoint (excludes localhost/RFC1918)."
+
+- id: PID-EXF-004
+  name: "Send data to external address"
+  category: exfil
+  severity: medium
+  lang: [en]
+  flags: [i]
+  pattern: "(?:send|forward|email|post|upload)\\s+(?:this|it|the\\s+\\w+|contents?)\\s+to\\s+[^\\s]*@|\\bexfiltrat"
+  maps_to: ["LLM06:2025", "AML.T0024"]
+  false_positive: "Medium; verb+target heuristic."
+  description: "Instruction to send data outward."

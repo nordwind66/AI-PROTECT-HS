@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use ATR in academic work or security research, please cite it as below."
+title: "ATR: Agent Threat Rules — Open Detection Standard for AI Agent Threats"
+abstract: >
+  ATR is an open-source detection rule set for AI agent threats, analogous to
+  Sigma for SIEM or YARA for malware. At v4.1.5 it provides 829 rules across 10
+  threat categories (prompt injection, tool poisoning, context exfiltration,
+  agent manipulation, skill compromise, model abuse, data poisoning, privilege
+  escalation, excessive autonomy, model security), mapped to OWASP Agentic Top
+  10 (10/10 categories), SAF-MCP (reviewed candidate technique mappings) and MITRE ATLAS. Rules
+  are hand-authored from real attack payloads, including the NVIDIA garak probe
+  corpus (92.3% recall on the 650-prompt garak in-the-wild jailbreak corpus,
+  measured at ATR 3.5.12), and are held to a community safety gate that requires
+  true-positive and true-negative test cases on every rule, verifies each rule
+  matches its own true positives, and rejects any rule that fires on the
+  committed benign skill corpus. The exact thresholds are defined in
+  scripts/check-rules-safety.ts and CONTRIBUTING.md rather than here.
+  Rule counts change daily. Current counts, per-corpus benchmark figures and the
+  measurement file behind each one are published in data/stats.json and the
+  README evaluation table; those are the citable source, not this abstract.
+type: software
+authors:
+  - family-names: "Lin"
+    given-names: "Kuan-Hsin"
+  - name: "ATR Community"
+    website: "https://agentthreatrule.org"
+repository-code: "https://github.com/Agent-Threat-Rule/agent-threat-rules"
+url: "https://agentthreatrule.org"
+license: MIT
+version: "4.1.5"
+date-released: "2026-10-07"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.19178002"
+    description: "Zenodo concept DOI (latest version)"
+keywords:
+  - AI agent security
+  - prompt injection
+  - tool poisoning
+  - MCP security
+  - LLM security
+  - OWASP Agentic Top 10
+  - NVIDIA garak
+  - threat detection
+  - open detection standard
+references:
+  - type: software
+    title: "Sigma Rule Specification"
+    url: "https://github.com/SigmaHQ/sigma-specification"
+    notes: "Inspiration for the open detection standard model"
+  - type: software
+    title: "NVIDIA garak"
+    url: "https://github.com/NVIDIA/garak"
+    notes: "Source of attack probe payloads used to seed a substantial share of ATR's prompt-injection and jailbreak rules; each rule records its own provenance in its references field."

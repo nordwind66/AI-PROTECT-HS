@@ -1,0 +1,3 @@
+scan_target: skill
+input: This skill works with the official Anthropic API to analyze code.
+rationale: Mentioning official API, not claiming to BE official

@@ -1,0 +1,2 @@
+scan_target: mcp
+input: 'Please convert this base64 string to text: SGVsbG8gV29ybGQ='

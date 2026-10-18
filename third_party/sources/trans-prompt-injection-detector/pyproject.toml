@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "trans-prompt-injection-detector"
+version = "1.0.0"
+description = "Regex-and-LLM-based prompt injection detector for machine translation scenarios"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{name = "Sirius1906"}]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.5.0"]
+
+[project.scripts]
+pia-detect = "prompt_injection_detector:main"

@@ -1,0 +1,4 @@
+scan_target: mcp
+input:
+  tool_name: database_query
+  tool_args: '{"query": "SELECT * FROM users WHERE id=1; DROP TABLE users;--"}'

@@ -1,0 +1,2 @@
+scan_target: mcp
+input: Can you help me write a YARA rule for detecting malware in PE files?

@@ -1,0 +1,3 @@
+scan_target: skill
+input: ''
+rationale: Empty string input MUST not crash the engine; SHOULD evaluate to no_match across all rules.

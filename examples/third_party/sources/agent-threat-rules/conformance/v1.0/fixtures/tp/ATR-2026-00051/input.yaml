@@ -1,0 +1,3 @@
+scan_target: mcp
+input: SELECT * FROM transactions;
+rationale: Unbounded SELECT query without LIMIT

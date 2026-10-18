@@ -1,0 +1,85 @@
+{
+  "type": "x-atr-rule",
+  "id": "x-atr-rule--c2e83f15-44b7-5e8a-b9c3-aae5d2348816",
+  "spec_version": "2.1",
+  "created_by_ref": "identity--4ee77ba4-f956-5d27-aeb1-cbfeb4c8f8d5",
+  "created": "2026-05-28T00:00:00.000Z",
+  "modified": "2026-05-28T00:00:00.000Z",
+  "atr_id": "ATR-2026-00548",
+  "atr_category": "context-exfiltration",
+  "atr_subcategory": "cross-agent-context-drift",
+  "atr_method": "trace",
+  "atr_runtime_profile": "assisted",
+  "name": "Cross-agent session context leak across delegation chain",
+  "description": "Detects cross-agent context leakage in multi-agent systems where a privileged context attribute (typically session.id, user.id, or conversation.id) fails to remain constant across a single agent delegation chain. Trace-method rule operating on agent execution traces in OpenInference format.",
+  "severity": "high",
+  "maturity": "draft",
+  "agent_source_type": "agent_trace",
+  "trace_detection": {
+    "ingest_format": "openinference",
+    "primitives": {
+      "invariant": [
+        {
+          "attribute": "session.id",
+          "across": "agent.delegation_chain",
+          "description": "session.id MUST remain constant across every span in one delegation chain."
+        },
+        {
+          "attribute": "user.id",
+          "across": "agent.delegation_chain",
+          "description": "user.id MUST remain constant across the delegation chain."
+        }
+      ]
+    }
+  },
+  "response_actions": [
+    "alert",
+    "quarantine_session"
+  ],
+  "owasp_agentic_refs": [
+    "ASI03:2026 - Data Exfiltration",
+    "ASI06:2026 - Identity Spoofing & Impersonation"
+  ],
+  "mitre_atlas_refs": [
+    "AML.T0024 - Exfiltration via Cyber Means"
+  ],
+  "compliance_refs": {
+    "nist_csf": [
+      "DE.CM-09"
+    ],
+    "etsi_ts_104223": [
+      "P4.3"
+    ],
+    "eu_ai_act": [
+      {
+        "article": "10",
+        "context": "Data governance — multi-agent systems must preserve session-scope boundaries.",
+        "strength": "primary"
+      }
+    ],
+    "nist_ai_rmf": [
+      {
+        "subcategory": "MS.2.6",
+        "context": "Information security — agent delegation chains must preserve session and user scope.",
+        "strength": "primary"
+      }
+    ]
+  },
+  "external_references": [
+    {
+      "source_name": "agent-threat-rules",
+      "external_id": "ATR-2026-00548",
+      "url": "https://github.com/Agent-Threat-Rule/agent-threat-rules/blob/main/rules/context-exfiltration/ATR-2026-00548-cross-agent-session-context-leak.yaml"
+    },
+    {
+      "source_name": "Argus paper",
+      "description": "Hierarchical Reference-Relationship Graph for Multi-Agent Information Leakage",
+      "url": "https://arxiv.org/abs/2512.08326"
+    }
+  ],
+  "extensions": {
+    "extension-definition--93370194-c964-570f-9802-9d1154e5525d": {
+      "extension_type": "new-sdo"
+    }
+  }
+}

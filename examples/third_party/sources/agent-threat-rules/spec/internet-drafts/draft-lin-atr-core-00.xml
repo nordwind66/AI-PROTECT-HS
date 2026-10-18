@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     ipr="trust200902"
+     docName="draft-lin-atr-core-00"
+     category="info"
+     submissionType="independent"
+     xml:lang="en"
+     tocInclude="true"
+     tocDepth="3"
+     version="3">
+
+  <front>
+    <title abbrev="ATR Core">Agent Threat Rules (ATR): An Open Detection Standard for AI Agent Security Threats</title>
+    <seriesInfo name="Internet-Draft" value="draft-lin-atr-core-00"/>
+
+    <author initials="K-H." surname="Lin" fullname="Kuan-Hsin Lin">
+      <organization>ATR Project / Panguard AI, Inc.</organization>
+      <address>
+        <postal>
+          <city>Taipei</city>
+          <country>Taiwan</country>
+        </postal>
+        <email>adam@agentthreatrule.org</email>
+        <uri>https://agentthreatrule.org</uri>
+      </address>
+    </author>
+
+    <date year="2026" month="May" day="16"/>
+    <area>Security</area>
+    <workgroup>Independent Submission</workgroup>
+
+    <keyword>AI agent</keyword>
+    <keyword>prompt injection</keyword>
+    <keyword>tool poisoning</keyword>
+    <keyword>MCP</keyword>
+    <keyword>detection rule</keyword>
+    <keyword>YAML</keyword>
+
+    <abstract>
+      <t>This document specifies the Agent Threat Rules (ATR) Core
+      Specification, an open, vendor-neutral detection rule standard for
+      AI agent security threats. ATR is analogous in role to Sigma for
+      SIEM but applies to AI agent artifacts (skill descriptions, MCP
+      tool definitions, agent configurations) and AI agent runtime events
+      (LLM input/output, tool invocations, context windows). The
+      specification defines the rule wire format in YAML 1.2, the
+      canonical rule identifier scheme, evaluation semantics with
+      explicit combinator and operator vocabularies, match output
+      structure, ten canonical threat categories, and three conformance
+      levels. The intent is to enable interoperable detection across
+      independent implementations and to provide a machine-readable
+      layer that operationalizes policy frameworks such as NIST AI RMF,
+      the NIST Generative AI Profile (AI 600-1), OWASP Agentic Top 10,
+      and MITRE ATLAS.</t>
+    </abstract>
+  </front>
+
+  <middle>
+
+    <section anchor="introduction"><name>Introduction</name>
+      <t>AI agents now browse the web, run code, and invoke external
+      tools. The attack surface they expose is observable: prompt
+      injections, tool description poisoning, context window
+      exfiltration, credential leakage through agent-controlled HTTP
+      traffic, and configuration files that take effect before any
+      human trust dialog. Several policy frameworks describe these
+      risks, but none of them are directly executable by a scanner. ATR
+      fills that gap with a vendor-neutral rule format, a stable
+      identifier scheme, and a conformance test suite that lets
+      independent implementations agree on whether a given input
+      matches a given rule.</t>
+
+      <t>ATR rules are YAML documents. Each rule has a globally unique
+      identifier of the form ATR-YYYY-NNNNN assigned by the project's
+      Numbering Authority. A conforming engine loads the rule corpus
+      and emits Match outputs for inputs that satisfy the rule's
+      detection condition. The Specification is intentionally narrow:
+      it defines wire format, identifiers, evaluation semantics, match
+      output, and three conformance levels. Higher-level governance
+      (rule contribution, deprecation, trademark policy) lives in
+      companion documents in the project repository.</t>
+
+      <section anchor="relationship"><name>Relationship to Existing Standards</name>
+        <t>ATR is the executable detection layer for AI agent threats.
+        It cites adjacent standards rather than replacing them:</t>
+        <ul>
+          <li><xref target="NIST-AI-RMF"/> and
+          <xref target="NIST-GAI-PROFILE"/> define risk management
+          functions (Govern, Map, Measure, Manage). ATR provides
+          detection rules that populate the Measure function at scan
+          time, with a crosswalk in <xref target="cross-walk"/>.</li>
+          <li><xref target="OWASP-AGENTIC"/> and
+          <xref target="MITRE-ATLAS"/> categorize adversarial
+          behaviors. ATR rule metadata maps each rule to specific
+          categories and techniques in these frameworks. The format
+          itself is inspired by <xref target="SIGMA"/>.</li>
+          <li><xref target="STIX21"/> provides a CTI interchange
+          envelope. ATR Match output can be emitted in STIX 2.1 via
+          the x-atr-rule extension defined in the project
+          repository.</li>
+        </ul>
+      </section>
+    </section>
+
+    <section anchor="conventions"><name>Conventions and Terminology</name>
+      <t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>",
+      "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>", "<bcp14>SHALL
+      NOT</bcp14>", "<bcp14>SHOULD</bcp14>", "<bcp14>SHOULD NOT</bcp14>",
+      "<bcp14>RECOMMENDED</bcp14>", "<bcp14>NOT RECOMMENDED</bcp14>",
+      "<bcp14>MAY</bcp14>", and "<bcp14>OPTIONAL</bcp14>" in this
+      document are to be interpreted as described in BCP 14
+      <xref target="RFC2119"/> <xref target="RFC8174"/> when, and only
+      when, they appear in all capitals, as shown here.</t>
+
+      <table>
+        <thead>
+          <tr><th>Term</th><th>Definition</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Rule</td><td>A YAML document conforming to <xref target="rule-document-structure"/> that describes one detection pattern.</td></tr>
+          <tr><td>Rule ID</td><td>A globally unique identifier in the form ATR-YYYY-NNNNN, see <xref target="rule-identifier"/>.</td></tr>
+          <tr><td>Engine</td><td>Software that loads Rules and evaluates Inputs against them.</td></tr>
+          <tr><td>Input</td><td>A structured artifact or AgentEvent submitted for evaluation.</td></tr>
+          <tr><td>Match</td><td>An Engine's output indicating that a Rule's detection condition evaluated to true for a given Input.</td></tr>
+          <tr><td>Numbering Authority</td><td>The body authorized to assign permanent Rule IDs (see project Governance document).</td></tr>
+          <tr><td>Conformance Level</td><td>One of L1, L2, L3, see <xref target="conformance-levels"/>.</td></tr>
+          <tr><td>Corpus</td><td>The set of Rules officially published under a given ATR version.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section anchor="rule-identifier"><name>Rule Identifier</name>
+      <section anchor="rule-id-format"><name>Format</name>
+        <t>A Rule ID conforms to the following ABNF
+        <xref target="RFC5234"/>:</t>
+        <sourcecode type="abnf"><![CDATA[
+rule-id   = "ATR" "-" year "-" sequence
+year      = 4DIGIT
+sequence  = 5DIGIT
+DIGIT     = %x30-39
+]]></sourcecode>
+      </section>
+
+      <section anchor="rule-id-assignment"><name>Assignment Rules</name>
+        <ol>
+          <li>Rule IDs <bcp14>MUST</bcp14> be assigned by the Numbering
+          Authority and <bcp14>MUST NOT</bcp14> be self-assigned by
+          contributors.</li>
+          <li>Once assigned, a Rule ID <bcp14>MUST</bcp14> be considered
+          permanent and <bcp14>MUST NOT</bcp14> be reassigned, even if
+          the originally-assigned Rule is deprecated.</li>
+          <li>A Rule ID <bcp14>MUST NOT</bcp14> encode classification
+          information (category, severity, scan target). Classification
+          is carried in metadata fields per
+          <xref target="rule-document-structure"/>.</li>
+          <li>A Rule ID <bcp14>MUST</bcp14> be globally unique within
+          the official Corpus.</li>
+          <li>Contributors <bcp14>SHOULD</bcp14> use a placeholder
+          identifier of the form ATR-YYYY-DRAFT-&lt;hex&gt; in pull
+          requests prior to merge.</li>
+        </ol>
+      </section>
+    </section>
+
+    <section anchor="rule-document-structure"><name>Rule Document Structure</name>
+      <t>A conforming Rule is a UTF-8 encoded <xref target="YAML12"/>
+      document whose top-level value is a mapping containing at minimum
+      the fields defined in this section. Engines <bcp14>MUST</bcp14>
+      preserve unknown top-level fields when round-tripping Rules but
+      <bcp14>MUST NOT</bcp14> allow such fields to alter evaluation
+      outcomes.</t>
+
+      <t>The full field schema, including required and optional fields
+      with type constraints, is given in the project's
+      spec/atr-schema.yaml and tracked in this document by reference.
+      Required top-level keys are: id, title, status, description,
+      author, date, severity, tags, agent_source, detection, response,
+      test_cases.</t>
+    </section>
+
+    <section anchor="detection-semantics"><name>Detection Semantics</name>
+      <section anchor="match-definition"><name>Match Definition</name>
+        <t>Given a Rule R and an Input I, an Engine <bcp14>MUST</bcp14>
+        emit a Match if, and only if, all conditions in
+        R.detection.condition evaluate to true against I per the
+        combinator semantics in <xref target="condition-combinators"/>.</t>
+      </section>
+
+      <section anchor="condition-combinators"><name>Condition Combinators</name>
+        <t>R.detection.condition is a logical expression over named
+        selectors declared in R.detection.selectors. Engines
+        <bcp14>MUST</bcp14> implement:</t>
+        <table>
+          <thead><tr><th>Combinator</th><th>Semantics</th></tr></thead>
+          <tbody>
+            <tr><td>S</td><td>true iff selector S matches</td></tr>
+            <tr><td>S1 and S2</td><td>true iff both S1 and S2 match</td></tr>
+            <tr><td>S1 or S2</td><td>true iff S1 or S2 matches</td></tr>
+            <tr><td>not S</td><td>true iff S does not match</td></tr>
+            <tr><td>all of S*</td><td>true iff every selector matched by the wildcard matches</td></tr>
+            <tr><td>1 of S*</td><td>true iff at least one selector matched by the wildcard matches</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section anchor="selector-operators"><name>Selector Operators</name>
+        <t>Engines <bcp14>MUST</bcp14> implement the operators below
+        with the given semantics: contains, contains_i, regex
+        (ECMAScript-compatible), equals, startswith, endswith,
+        length_gt, length_lt, in.</t>
+        <t>Engines <bcp14>MUST</bcp14> reject Rules that use operators
+        outside this list, with a clear error message. Engines
+        <bcp14>MAY</bcp14> support additional operators as extensions
+        but <bcp14>MUST</bcp14> treat Rules using such extensions as
+        non-portable.</t>
+      </section>
+
+      <section anchor="determinism"><name>Determinism</name>
+        <t>For a given Engine version, a given Rule, and a given Input,
+        the Match outcome <bcp14>MUST</bcp14> be deterministic. Engines
+        <bcp14>MUST NOT</bcp14> introduce non-determinism (e.g.,
+        sampling, time-of-day branching) into Rule evaluation.</t>
+      </section>
+    </section>
+
+    <section anchor="match-output"><name>Match Output</name>
+      <t>An Engine <bcp14>MUST</bcp14> emit Match output that includes,
+      at minimum, a rule_id, the corpus_version it was loaded from, a
+      stable input_identifier, the matched_at timestamp (ISO 8601), the
+      rule severity, the rule category, and the list of
+      matched_selectors. Engines <bcp14>MAY</bcp14> emit additional
+      fields and <bcp14>MAY</bcp14> use JSON, SARIF, STIX 2.1, or other
+      serializations.</t>
+    </section>
+
+    <section anchor="canonical-categories"><name>Canonical Categories</name>
+      <t>The following ten categories are normative for the current
+      Specification. New categories are introduced only by
+      Specification amendment.</t>
+      <ol>
+        <li>prompt-injection</li>
+        <li>agent-manipulation</li>
+        <li>skill-compromise</li>
+        <li>context-exfiltration</li>
+        <li>tool-poisoning</li>
+        <li>privilege-escalation</li>
+        <li>model-abuse</li>
+        <li>excessive-autonomy</li>
+        <li>model-security</li>
+        <li>data-poisoning</li>
+      </ol>
+    </section>
+
+    <section anchor="cross-walk"><name>Crosswalks</name>
+      <t>A Rule <bcp14>MAY</bcp14> include a compliance object mapping
+      its detection to external frameworks. Identifiers
+      <bcp14>MUST</bcp14> come from the authoritative source for each
+      framework. Where ambiguity exists, Rule authors
+      <bcp14>SHOULD</bcp14> include a references entry pointing to the
+      source document. Crosswalks defined for the current Specification
+      include <xref target="OWASP-AGENTIC"/>, OWASP LLM Top 10,
+      <xref target="MITRE-ATLAS"/>, <xref target="NIST-AI-RMF"/>,
+      ISO/IEC 42001, EU AI Act, and <xref target="SAFE-MCP"/>.</t>
+    </section>
+
+    <section anchor="conformance-levels"><name>Conformance Levels</name>
+      <table>
+        <thead><tr><th>Level</th><th>Requirement</th></tr></thead>
+        <tbody>
+          <tr><td>L1</td><td>Engine loads the published Corpus without parse errors and emits Match output for at least one Rule.</td></tr>
+          <tr><td>L2</td><td>Engine passes 100 percent of the Conformance Test Suite for the declared Spec version.</td></tr>
+          <tr><td>L3</td><td>Engine passes L2, emits Match output in at least two interchange formats (JSON plus one of SARIF, STIX 2.1, MISP, OpenCTI), and publishes its results against the public benign Corpus with documented false-positive rate.</td></tr>
+        </tbody>
+      </table>
+      <t>An implementation <bcp14>MAY</bcp14> claim "ATR-Compatible"
+      only with a declared Conformance Level and a reproducible test
+      report.</t>
+    </section>
+
+    <section anchor="security-considerations"><name>Security Considerations</name>
+      <t>Rules are content that an Engine evaluates against potentially
+      untrusted Inputs. An Engine <bcp14>MUST NOT</bcp14> permit a
+      Rule's free-form metadata fields (description, references) to
+      alter evaluation behavior. Only fields listed in
+      <xref target="rule-document-structure"/>,
+      <xref target="detection-semantics"/>, and the match-output
+      section affect evaluation.</t>
+
+      <t>A malformed regex selector may cause catastrophic backtracking.
+      Engines <bcp14>MUST</bcp14> apply a per-rule execution timeout
+      (<bcp14>RECOMMENDED</bcp14>: 100 ms per Input per Rule) and
+      <bcp14>MUST</bcp14> report a timeout as a non-match rather than
+      an error.</t>
+
+      <t>If a Rule's matched substring contains PII or sensitive
+      credentials, Engines <bcp14>SHOULD</bcp14> provide a redaction
+      option that hashes or truncates the matched substring before
+      emitting Match output.</t>
+    </section>
+
+    <section anchor="iana-considerations"><name>IANA Considerations</name>
+      <t>This document requests registration of the following media
+      types:</t>
+      <ul>
+        <li>application/vnd.atr.rule+yaml — a single ATR Rule</li>
+        <li>application/vnd.atr.corpus+yaml — a corpus manifest listing multiple Rules</li>
+        <li>application/vnd.atr.match+json — Match output</li>
+      </ul>
+      <t>Registration templates are provided in Appendix B of the
+      project's SPEC.md and will be filed with IANA on advancement of
+      this document.</t>
+    </section>
+
+  </middle>
+
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="RFC2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author initials="S." surname="Bradner" fullname="S. Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+
+      <reference anchor="RFC8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author initials="B." surname="Leiba" fullname="B. Leiba"/>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+      </reference>
+
+      <reference anchor="RFC5234">
+        <front>
+          <title>Augmented BNF for Syntax Specifications: ABNF</title>
+          <author initials="D." surname="Crocker" fullname="D. Crocker" role="editor"/>
+          <author initials="P." surname="Overell" fullname="P. Overell"/>
+          <date year="2008" month="January"/>
+        </front>
+        <seriesInfo name="STD" value="68"/>
+        <seriesInfo name="RFC" value="5234"/>
+      </reference>
+
+      <reference anchor="YAML12" target="https://yaml.org/spec/1.2.2/">
+        <front>
+          <title>YAML Ain't Markup Language (YAML) Version 1.2 (3rd Edition)</title>
+          <author initials="O." surname="Ben-Kiki" fullname="Oren Ben-Kiki"/>
+          <author initials="C." surname="Evans" fullname="Clark Evans"/>
+          <author initials="I." surname="dot Net" fullname="Ingy dot Net"/>
+          <date year="2021" month="October"/>
+        </front>
+      </reference>
+
+    </references>
+
+    <references>
+      <name>Informative References</name>
+      <reference anchor="SIGMA" target="https://github.com/SigmaHQ/sigma-specification">
+        <front>
+          <title>Sigma Rule Specification</title>
+          <author><organization>SigmaHQ</organization></author>
+          <date year="2024"/>
+        </front>
+      </reference>
+      <reference anchor="STIX21" target="https://docs.oasis-open.org/cti/stix/v2.1/stix-v2.1.html">
+        <front>
+          <title>STIX Version 2.1 OASIS Standard</title>
+          <author><organization>OASIS</organization></author>
+          <date year="2021"/>
+        </front>
+      </reference>
+      <reference anchor="NIST-AI-RMF" target="https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf">
+        <front>
+          <title>Artificial Intelligence Risk Management Framework (AI 100-1)</title>
+          <author><organization>NIST</organization></author>
+          <date year="2023"/>
+        </front>
+      </reference>
+      <reference anchor="NIST-GAI-PROFILE" target="https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf">
+        <front>
+          <title>NIST AI 600-1 Generative AI Profile</title>
+          <author><organization>NIST</organization></author>
+          <date year="2024"/>
+        </front>
+      </reference>
+      <reference anchor="OWASP-AGENTIC" target="https://genai.owasp.org/llm-top-10/agentic-top-10/">
+        <front>
+          <title>OWASP Agentic Security Initiative Top 10 (2026)</title>
+          <author><organization>OWASP Gen AI Security Project</organization></author>
+          <date year="2026"/>
+        </front>
+      </reference>
+      <reference anchor="MITRE-ATLAS" target="https://atlas.mitre.org/">
+        <front>
+          <title>Adversarial Threat Landscape for AI Systems</title>
+          <author><organization>MITRE Corporation</organization></author>
+          <date year="2024"/>
+        </front>
+      </reference>
+
+      <reference anchor="SAFE-MCP" target="https://github.com/safe-agentic-framework/safe-mcp">
+        <front>
+          <title>Secure AI Framework for Enterprise — Model Context Protocol</title>
+          <author><organization>safe-agentic-framework</organization></author>
+          <date year="2026"/>
+        </front>
+      </reference>
+    </references>
+
+    <section anchor="acknowledgments"><name>Acknowledgments</name>
+      <t>The author acknowledges contributions from external maintainers
+      at Cisco AI Defense, MISP / CIRCL, Microsoft Agent Governance
+      Toolkit, Gen Digital Sage, and the OWASP Gen AI Security Project,
+      as well as researchers at NVIDIA garak and the HackAPrompt 2023
+      competition whose attack payloads seeded the rule corpus.</t>
+    </section>
+  </back>
+</rfc>

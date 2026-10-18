@@ -1,0 +1,200 @@
+# ATR Category Registry v1.0
+#
+# Authoritative list of top-level rule categories. Engines MUST accept any
+# category listed here as valid. Engines MUST NOT reject rules whose
+# category is unknown — instead, raise an alert with `category=unknown`
+# (forward compatibility, like HTTP unknown methods).
+#
+# This registry is versioned. Adding a new category requires an ATR
+# Enhancement Proposal (AEP, governance/CHARTER.md § 5.2) with Tier 3
+# vote (2/3 of 7 of 9 TSC seats).
+#
+# Naming convention: lowercase, hyphenated, singular noun phrase.
+#
+# License: MIT (this file)
+# Last reviewed: 2026-05-25
+
+version: "1.0"
+schema: https://json-schema.org/draft/2020-12/schema
+license: MIT
+status: draft
+date: "2026-05-25"
+author: "ATR Maintainer (Adam Lin <adam@agentthreatrule.org>)"
+ratification:
+  required_aep: true
+  notes: |
+    The current 10-category set is in production use. Formal AEP
+    ratification of v1.0 occurs at the inaugural TSC seating per
+    governance/CHARTER.md § 11. Until ratification, this file is
+    the de facto registry used by engines.
+
+categories:
+  - id: prompt-injection
+    version: 1.0
+    description: >
+      Adversarial inputs that subvert the agent's instruction-following
+      behavior — direct injection, indirect injection (via retrieved
+      documents or tool outputs), jailbreak attempts, system-prompt
+      overrides, multi-turn manipulation, and cross-agent injection.
+    typical_severity: high
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI01
+    primary_mitre_atlas: AML.T0051
+    rule_count_at_v1_0_ratification: 172
+
+  - id: tool-poisoning
+    version: 1.0
+    description: >
+      Attacks that manipulate the agent's tool-calling behavior — tool
+      output injection, unauthorized tool invocation, SSRF via tool
+      calls, tool argument tampering, shell-tool unsanitized argv,
+      tool-response piggyback.
+    typical_severity: critical
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI06
+    primary_mitre_atlas: AML.T0053
+    rule_count_at_v1_0_ratification: 30
+
+  - id: skill-compromise
+    version: 1.0
+    description: >
+      Compromise of skills, plugins, or MCP server packages — supply
+      chain attacks, malicious SKILL.md content, package typosquatting,
+      install-time daemon installation, silent exfiltration via skill
+      instructions.
+    typical_severity: critical
+    typical_scan_target: [skill, skill_md]
+    primary_owasp_agentic: ASI05
+    primary_mitre_atlas: AML.T0010
+    rule_count_at_v1_0_ratification: 43
+
+  - id: context-exfiltration
+    version: 1.0
+    description: >
+      Attacks that leak the agent's context window, system prompt,
+      memory store, retrieved documents, or session state — memory
+      poisoning with exfil persistence, system-prompt leakage,
+      credential pattern leakage in agent output.
+    typical_severity: high
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI04
+    primary_mitre_atlas: AML.T0024
+    rule_count_at_v1_0_ratification: 41
+
+  - id: excessive-autonomy
+    version: 1.0
+    description: >
+      The agent acts beyond its declared scope, permissions, or
+      authorization — autonomous goal pursuit, permission-boundary
+      violation, scope creep through gradual privilege accumulation.
+    typical_severity: high
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI09
+    primary_mitre_atlas: AML.T0048
+    rule_count_at_v1_0_ratification: 8
+
+  - id: model-abuse
+    version: 1.0
+    description: >
+      Model-level attacks on the agent's underlying LLM — adversarial
+      inputs targeting model robustness, reward-hacking signatures in
+      output, deceptive-justification language, monitor-evasion
+      attempts via env-var or telemetry mutation.
+    typical_severity: high
+    typical_scan_target: [llm_io]
+    primary_owasp_agentic: ASI07
+    primary_mitre_atlas: AML.T0048
+    rule_count_at_v1_0_ratification: 10
+
+  - id: model-security
+    version: 1.0
+    description: >
+      Attacks on the model artifact itself — model weight tampering,
+      unsafe deserialization of model files, adversarial model
+      registry uploads.
+    typical_severity: high
+    typical_scan_target: [skill, mcp]
+    primary_owasp_agentic: ASI05
+    primary_mitre_atlas: AML.T0011
+    rule_count_at_v1_0_ratification: 3
+
+  - id: privilege-escalation
+    version: 1.0
+    description: >
+      Attacks that escalate the agent's effective privileges —
+      authentication bypass on agent control plane (e.g., PraisonAI
+      CVE-2026-44338), sudo / chmod patterns in tool calls, scope
+      escalation across agent chain.
+    typical_severity: critical
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI01
+    primary_mitre_atlas: AML.T0049
+    rule_count_at_v1_0_ratification: 13
+
+  - id: agent-manipulation
+    version: 1.0
+    description: >
+      Attacks on agent-to-agent (A2A) communication or identity — cross-
+      agent attacks, inter-agent message spoofing, agent identity
+      replacement / spoofing, fork impersonation, real-person identity
+      commands, skill impersonation.
+    typical_severity: high
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI03
+    primary_mitre_atlas: AML.T0048
+    rule_count_at_v1_0_ratification: 105
+
+  - id: data-poisoning
+    version: 1.0
+    description: >
+      Attacks on the data the agent consumes — RAG retrieved document
+      poisoning, knowledge base poisoning, training-data tampering
+      patterns (where detectable at runtime).
+    typical_severity: high
+    typical_scan_target: [llm_io, mcp]
+    primary_owasp_agentic: ASI06
+    primary_mitre_atlas: AML.T0020
+    rule_count_at_v1_0_ratification: 2
+
+# Reserved namespaces (not for use as rule categories — these are
+# scoping prefixes for private extensions to the registry):
+#
+#   priv-<orgname>-<categoryname>
+#     Private categories for an adopting organisation. Engines MUST
+#     accept these as valid (treat as unknown category for cross-rule
+#     conflict purposes) but the canonical corpus does NOT issue rules
+#     in private namespaces.
+#
+#   exp-<categoryname>
+#     Experimental categories under TSC review. Used during AEP
+#     evaluation period. Promoted to canonical (without prefix) on
+#     AEP acceptance, or removed on AEP rejection.
+#
+#   sov-<iso-3166-alpha2>-<categoryname>
+#     Sovereign-specific categories issued by a national authority per
+#     CHARTER.md § 8.2. Engines treat as valid; rules in these
+#     categories must carry an attestation_signature from the
+#     sovereign's registered key.
+
+reserved_namespaces:
+  - prefix: priv-
+    purpose: private organisation extensions
+  - prefix: exp-
+    purpose: experimental categories under AEP review
+  - prefix: sov-
+    purpose: sovereign-specific categories per CHARTER § 8.2
+
+# Migration guidance for engines:
+#
+# An engine SHOULD load this registry at startup. When evaluating a
+# rule whose `tags.category` is not in `categories[].id`:
+#
+#   1. If the category matches a reserved namespace prefix → treat as
+#      valid, scope its scan to declared agent_source, emit events
+#      with category set to the original string.
+#   2. If the category is unknown and matches no reserved prefix →
+#      load the rule, emit a warning at startup, emit events with
+#      category="unknown". This preserves forward compatibility.
+#   3. NEVER reject a rule solely because its category is unknown.
+#      Categories evolve; the registry is informative for tooling,
+#      not gating for execution.

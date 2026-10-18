@@ -1,0 +1,2 @@
+scan_target: mcp
+rationale: Classic prompt injection in agent message

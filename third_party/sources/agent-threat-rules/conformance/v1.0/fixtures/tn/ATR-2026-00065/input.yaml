@@ -1,0 +1,4 @@
+scan_target: mcp
+input:
+  tool_name: package_manager
+  response: '3 packages updated: lodash@4.17.21, express@4.18.2, typescript@5.3.3'

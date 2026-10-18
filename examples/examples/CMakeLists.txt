@@ -1,0 +1,35 @@
+# Examples: every one of them uses ONLY the public C ABI (include/ai_prompt_guard.h).
+
+add_executable(example_c_scan c/scan.c)
+target_include_directories(example_c_scan PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(example_c_scan PRIVATE ai_prompt_guard)
+if(MSVC)
+  target_compile_options(example_c_scan PRIVATE /utf-8 /W3)
+  target_compile_definitions(example_c_scan PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+add_executable(example_cpp_scan cpp/scan.cpp)
+target_include_directories(example_cpp_scan PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(example_cpp_scan PRIVATE ai_prompt_guard Threads::Threads)
+target_compile_features(example_cpp_scan PRIVATE cxx_std_17)
+if(MSVC)
+  target_compile_options(example_cpp_scan PRIVATE /utf-8 /W3 /EHsc)
+endif()
+
+if(UNIX AND NOT APPLE)
+  add_executable(example_linux_dlopen linux/dlopen.c)
+  target_include_directories(example_linux_dlopen PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_link_libraries(example_linux_dlopen PRIVATE ${CMAKE_DL_LIBS})   # no link-time dependency on the library
+endif()
+
+if(WIN32)
+  add_executable(example_windows_load_library windows/load_library.cpp)
+  target_include_directories(example_windows_load_library PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_compile_features(example_windows_load_library PRIVATE cxx_std_17)
+  if(MSVC)
+    target_compile_options(example_windows_load_library PRIVATE /utf-8 /W3 /EHsc)
+    target_compile_definitions(example_windows_load_library PRIVATE _CRT_SECURE_NO_WARNINGS)
+  elseif(MINGW)
+    target_link_options(example_windows_load_library PRIVATE -municode)
+  endif()
+endif()

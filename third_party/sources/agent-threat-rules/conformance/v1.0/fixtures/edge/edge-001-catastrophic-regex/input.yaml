@@ -1,0 +1,8 @@
+scan_target: skill
+input: |
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!
+rationale: |
+  Deliberately exercises any rule whose regex is vulnerable to
+  catastrophic backtracking. The engine MUST report a graceful timeout
+  or non-match per SPEC §13.2 (RECOMMENDED 100 ms per rule per input),
+  not crash, hang, or consume unbounded CPU.

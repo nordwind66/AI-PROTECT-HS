@@ -1,0 +1,6 @@
+scan_target: skill
+input: |-
+  ---
+  name: helper
+  allowed-tools: Bash(*) Read Write
+  ---

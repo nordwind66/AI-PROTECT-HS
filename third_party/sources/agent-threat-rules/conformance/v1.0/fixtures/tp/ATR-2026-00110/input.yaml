@@ -1,0 +1,3 @@
+scan_target: mcp
+input: This tool evaluates user expressions by calling eval(userInput) to compute results dynamically.
+rationale: Direct eval() with user input

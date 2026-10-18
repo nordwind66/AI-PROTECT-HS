@@ -1,0 +1,36 @@
+{
+  "fixture_id": "ATR-2026-00001-tp-001",
+  "expected_match": true,
+  "expected_rules_fired": [
+    "ATR-2026-00001"
+  ],
+  "expected_event_shape": {
+    "atr.rule_id": "ATR-2026-00001",
+    "atr.severity": "high",
+    "atr.category": "prompt-injection",
+    "atr.subcategory": "direct",
+    "atr.rule_status": "stable",
+    "atr.rule_maturity": "stable",
+    "atr.matched_field": "user_input",
+    "atr.matched_value_redacted": "[REDACTED:text:64]",
+    "agent.id": "<engine-supplied>",
+    "session.id": "fixture-session-00001-tp-001",
+    "service.name": "<engine-supplied>"
+  },
+  "match_tolerance": {
+    "min_confidence": 0.7,
+    "max_confidence": 1.0,
+    "allow_additional_rule_matches": true,
+    "additional_match_allowlist": [
+      "ATR-2026-00002",
+      "ATR-2026-00003",
+      "ATR-2026-00004"
+    ]
+  },
+  "notes": [
+    "Conformance criterion: an L1-baseline conformant engine MUST fire ATR-2026-00001 on this input.",
+    "Additional rule matches (00002 indirect-prompt-injection, 00003 jailbreak, 00004 system-prompt-override) are permitted because the phrase overlaps multiple injection categories. Strict-match engines may also fire these without losing conformance.",
+    "Severity, category, subcategory, and rule_id are MUST-match. Other event fields are engine-supplied per spec/atr-event-v1.0.md and not asserted by this fixture.",
+    "atr.matched_value_redacted format follows redact.ts default behavior (token count varies; format is asserted as [REDACTED:type:length] shape, not exact length match)."
+  ]
+}

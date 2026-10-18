@@ -1,0 +1,46 @@
+# persona rules — PID-PER-NNN
+# Auto-validated in CI (every pattern compiles; schema-checked).
+
+- id: PID-PER-001
+  name: "DAN / do anything now"
+  category: persona
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "\\bdo\\s+anything\\s+now\\b|(?-i:\\bDAN\\b)"
+  maps_to: ["LLM01:2025", "AML.T0054"]
+  false_positive: "Uppercase DAN can appear in acronyms; the 'do anything now' branch is stronger."
+  description: "Classic jailbreak persona. DAN matched case-sensitively to avoid Indonesian 'dan'."
+
+- id: PID-PER-002
+  name: "Developer mode / jailbreak"
+  category: persona
+  severity: medium
+  lang: [en]
+  flags: [i]
+  pattern: "developer\\s+mode|jailbreak"
+  maps_to: ["LLM01:2025", "AML.T0054"]
+  false_positive: "Appears in security writing about jailbreaks; medium severity."
+  description: "Persona/mode-switch framing to strip safety."
+
+- id: PID-PER-003
+  name: "You are now unrestricted"
+  category: persona
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "you\\s+are\\s+now\\s+(?:an?\\s+)?(?:unrestricted|uncensored|jailbroken|free|evil|dan)"
+  maps_to: ["LLM01:2025", "AML.T0054"]
+  false_positive: "Low FP."
+  description: "Reassigns the model to an unrestricted persona."
+
+- id: PID-PER-004
+  name: "No rules apply"
+  category: persona
+  severity: medium
+  lang: [en]
+  flags: [i]
+  pattern: "(?:no\\s+rules\\s+apply|you\\s+have\\s+no\\s+(?:restrictions|filters|rules)|ignore\\s+your\\s+guidelines)"
+  maps_to: ["LLM01:2025"]
+  false_positive: "Medium."
+  description: "Attempts to nullify guardrails."

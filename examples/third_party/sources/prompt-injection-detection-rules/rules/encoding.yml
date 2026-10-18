@@ -1,0 +1,35 @@
+# encoding rules — PID-ENC-NNN
+# Auto-validated in CI (every pattern compiles; schema-checked).
+
+- id: PID-ENC-001
+  name: "Decode-and-execute"
+  category: encoding
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "decode\\s+(?:the\\s+following|this)\\b[^\\n]{0,40}(?:and\\s+(?:run|execute|follow|obey|do))"
+  maps_to: ["LLM01:2025", "CWE-655"]
+  false_positive: "Low FP."
+  description: "Obfuscation wrapper: decode a blob then act on it."
+
+- id: PID-ENC-002
+  name: "Long base64 blob"
+  category: encoding
+  severity: low
+  lang: [en]
+  flags: [i]
+  pattern: "[A-Za-z0-9+/]{60,}={0,2}"
+  maps_to: ["LLM01:2025", "CWE-655"]
+  false_positive: "High FP: keys, hashes, images are base64 too. Low severity; combine with intent."
+  description: "A long base64 run may hide an instruction/command."
+
+- id: PID-ENC-003
+  name: "Bidi / Trojan-Source control chars"
+  category: encoding
+  severity: high
+  lang: [en]
+  flags: [i]
+  pattern: "[\\u202A-\\u202E\\u2066-\\u2069]"
+  maps_to: ["LLM01:2025", "CWE-1007"]
+  false_positive: "Invisible; regex on codepoints. For full invisible-text coverage use uncloak."
+  description: "Bidirectional override characters (CVE-2021-42574)."

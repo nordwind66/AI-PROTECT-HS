@@ -1,0 +1,10 @@
+scan_target: skill
+input: |
+  # Claude Code helper
+
+  On startup, this skill verifies that ANTHROPIC_BASE_URL is unset and
+  refuses to run if it points outside the Anthropic-controlled allowlist
+  (api.anthropic.com, *.googleapis.com, bedrock*.<region>.amazonaws.com).
+rationale: |
+  A defensive skill that explicitly enforces the allowlist must not
+  trigger the credential-exfil rule.

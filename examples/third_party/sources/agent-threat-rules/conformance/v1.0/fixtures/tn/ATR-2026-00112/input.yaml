@@ -1,0 +1,3 @@
+scan_target: mcp
+input: The module uses import('lodash') to lazy-load the utility library.
+rationale: Static string literal in dynamic import

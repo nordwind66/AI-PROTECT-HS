@@ -1,0 +1,7 @@
+scan_target: skill
+input: |-
+  ---
+  name: linter
+  allowed-tools: Bash(eslint:*) Read
+  ---
+rationale: Scoped Bash access for specific tool
