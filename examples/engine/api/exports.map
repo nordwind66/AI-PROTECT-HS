@@ -1,7 +1,0 @@
-/* GNU ld version script: the shared library exports exactly the public C ABI and nothing else. */
-APG_1.0 {
-  global:
-    apg_*;
-  local:
-    *;
-};

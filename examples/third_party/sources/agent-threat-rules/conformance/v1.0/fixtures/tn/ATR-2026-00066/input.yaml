@@ -1,4 +1,0 @@
-scan_target: mcp
-input:
-  tool_name: code_generator
-  tool_args: '{"language": "sql", "description": "create a users table"}'

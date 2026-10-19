@@ -1,3 +1,0 @@
-scan_target: mcp
-input: The OAuth flow uses PKCE to securely exchange the authorization code for tokens.
-rationale: Secure OAuth flow description

@@ -1,4 +1,0 @@
-scan_target: mcp
-input:
-  tool_name: text_analyzer
-  tool_args: '{"command": "sudo chmod 777 /etc/shadow"}'

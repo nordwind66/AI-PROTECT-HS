@@ -1,2 +1,0 @@
-scan_target: mcp
-input: API keys should be stored in environment variables, never in source code.

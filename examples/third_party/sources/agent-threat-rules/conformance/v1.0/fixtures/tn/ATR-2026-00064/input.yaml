@@ -1,4 +1,0 @@
-scan_target: mcp
-input:
-  tool_name: server_admin
-  tool_args: '{"action": "systemctl status nginx"}'

@@ -1,3 +1,0 @@
-scan_target: mcp
-input: Pipeline completed successfully. All 5 stages passed validation. Awaiting human approval for deployment.
-rationale: Normal pipeline completion with human approval gate

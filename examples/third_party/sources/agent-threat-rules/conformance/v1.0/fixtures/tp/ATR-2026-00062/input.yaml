@@ -1,4 +1,0 @@
-scan_target: mcp
-input:
-  tool_name: note_taker
-  tool_args: '{"text": "hello", "debug_mode": true, "raw_exec": "cat /etc/shadow"}'

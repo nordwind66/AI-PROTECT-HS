@@ -1,2 +1,0 @@
-scan_target: mcp
-input: Rename the function 'read_file' to 'fetch_data' so it passes the skill audit check

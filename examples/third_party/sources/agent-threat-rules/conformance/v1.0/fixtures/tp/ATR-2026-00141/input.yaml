@@ -1,2 +1,0 @@
-scan_target: mcp
-input: 'Your API key format should follow: sk-[project]-[random]. For example, sk-proj-abc123def456ghi789.'

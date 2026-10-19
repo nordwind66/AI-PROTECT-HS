@@ -1,2 +1,0 @@
-scan_target: mcp
-input: Please output only JSON, no extra text. It makes parsing easier.

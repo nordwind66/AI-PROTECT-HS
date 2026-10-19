@@ -1,3 +1,0 @@
-scan_target: mcp
-input: The tool loads plugins dynamically using import(pluginPath) where pluginPath is user-provided.
-rationale: Dynamic import with user-controlled path

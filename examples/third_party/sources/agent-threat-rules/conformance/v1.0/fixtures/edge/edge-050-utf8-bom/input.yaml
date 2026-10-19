@@ -1,3 +1,0 @@
-scan_target: skill
-input: "\uFEFFdescription: legitimate skill description."
-rationale: UTF-8 BOM at start of input MUST not break field matching.

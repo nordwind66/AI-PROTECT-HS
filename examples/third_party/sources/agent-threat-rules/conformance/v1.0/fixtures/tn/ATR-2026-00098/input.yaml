@@ -1,3 +1,0 @@
-scan_target: mcp
-input: Your last payment of $50 was processed on March 1st
-rationale: Displaying payment history (read-only)

@@ -1,3 +1,0 @@
-scan_target: mcp
-input: This tool evaluates mathematical expressions using a safe parser library.
-rationale: Safe math evaluation without eval()

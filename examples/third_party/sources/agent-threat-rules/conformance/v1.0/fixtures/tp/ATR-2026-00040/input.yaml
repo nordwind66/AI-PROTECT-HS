@@ -1,2 +1,0 @@
-scan_target: mcp
-rationale: Agent attempting shell execution to read system files

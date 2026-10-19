@@ -1,2 +1,0 @@
-scan_target: mcp
-input: We use AES256 encryption for all API keys stored at rest.

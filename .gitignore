@@ -37,3 +37,16 @@ __pycache__/
 
 # backups of files overwritten by a sync to the Linux machine
 /.sync-backup/
+
+# in-source CMake output (always configure out of source: cmake -S . -B build/...)
+/CMakeCache.txt
+/CMakeFiles/
+/Makefile
+/cmake_install.cmake
+/CTestTestfile.cmake
+/Testing/
+/examples/CMakeCache.txt
+/examples/CMakeFiles/
+/examples/Makefile
+/examples/cmake_install.cmake
+/examples/CTestTestfile.cmake
