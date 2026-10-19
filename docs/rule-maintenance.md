@@ -5,6 +5,23 @@
 
 > 本文里的 Python 命令均已在开发机上实际运行过；`ai-prompt-guard compile / scan` 等 C++ 命令**尚未在任何机器上运行**（待 Linux 实测）。
 
+## 0. 日常更新：改 JSON → 跑一个脚本（推荐）
+
+规则库只需要生成一次（`build_rules_db.py --fresh`，见 §2）。之后维护**手工规则**只做两件事：
+
+1. 在 `data/manual_rules/*.json` 里增加或修改规则（格式见 `zh_extra.json`：`name`、`category`、`severity`、`patterns`、`tests` 的正反样例……）。**规则名是主键**：新名字 = 新规则；同名 = 对比后有变化就生成新修订；改名 = 新规则（旧的用 `--prune` 删除）。
+2. 运行：
+
+```bash
+python tools/update_rules.py --dry-run     # 先看会新增/修改哪些规则，不写任何东西
+python tools/update_rules.py               # 同步 → 规则测试 → 严格校验 → 发布下一个补丁版本(如 1.1.0 → 1.1.1) → 刷新语料期望值 → 校验和
+python tools/update_rules.py --compile     # 同上，再在本机编译、登记、激活（等价于随后跑 scripts/linux/init_rules.sh）
+```
+
+选项：`--version 1.2.0` 指定版本；`--prune` 同时删除 JSON 里已经没有的手工规则；`--file a.json b.json` 只用指定文件（此时不要配 `--prune`）；`--no-eval` 不刷新 `tests/corpus/expected/*`。文件内容与上一个版本完全一致时什么都不发布。已发布的版本永远不变，要回退用 `rules.py rollback`。
+
+底层是 `rules.py sync-manual`（可单独使用，也支持 `--dry-run` / `--prune`）。上游规则（ATR / fevzi / trans）不受影响，它们仍然用 `rules.py import` 更新。
+
 ## 1. 工作流一览
 
 ```mermaid

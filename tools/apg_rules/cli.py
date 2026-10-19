@@ -501,6 +501,14 @@ def build_parser() -> argparse.ArgumentParser:
         x.add_argument("--dry-run", action="store_true")
         x.set_defaults(func=cmd_rule_mutation, command_name=name)
 
+    x = sub.add_parser("sync-manual", help="make the manual rules of the database equal to the given JSON files "
+                                           "(create new, edit changed, optionally delete missing)")
+    x.add_argument("--file", nargs="+", required=True, help="rule specification file(s); the rule name is the key")
+    x.add_argument("--prune", action="store_true", help="soft-delete manual rules that are in none of the files")
+    x.add_argument("--reason", default="", help="change reason recorded in revision + audit log")
+    x.add_argument("--dry-run", action="store_true")
+    x.set_defaults(func=cmd_rule_mutation, command_name="sync-manual")
+
     # quality / release -----------------------------------------------------------------
     x = sub.add_parser("validate", help="validate the draft rule set (schema, references, tests, patterns)")
     x.add_argument("--strict", action="store_true", help="warnings fail the command")

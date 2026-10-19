@@ -34,6 +34,40 @@ class MaintenanceTests(TempCase):
         self.assertIn("already exists", again)
         self.assertEqual(self.rule_ids(), ["AIPS-PI-0001", "AIPS-SP-0001"])
 
+    def sync(self, *specs, extra=(), name="sync.json"):
+        path = write_json(self.tmp / name, {"rules": list(specs)})
+        _, out = run_cli(self.db, "sync-manual", "--file", str(path), *extra)
+        return out
+
+    def test_sync_manual_creates_updates_and_prunes_by_name(self):
+        out = self.sync(*two_rules())
+        self.assertIn("created 2, updated 0, unchanged 0, removed 0", out)
+        self.assertIn("created 0, updated 0, unchanged 2, removed 0", self.sync(*two_rules()))      # idempotent
+        self.assertEqual(self.scalar("SELECT COUNT(*) FROM rule_revisions"), 2)
+        changed = two_rules()
+        changed[0] = rule_spec("alpha injection", r"alpha\s+beta\s+gamma", weight=0.5,
+                               positive=["please alpha beta gamma now"], negative=["alphabet soup"])
+        out = self.sync(*changed)
+        self.assertIn("created 0, updated 1, unchanged 1, removed 0", out)
+        self.assertEqual(self.scalar("SELECT revision FROM rules WHERE rule_id='AIPS-PI-0001'"), 2)
+        self.assertEqual(self.scalar("SELECT weight FROM rules WHERE rule_id='AIPS-PI-0001'"), 0.5)
+        self.assertEqual(self.scalar("SELECT COUNT(*) FROM rule_tests WHERE rule_id='AIPS-PI-0001'"), 2)
+        # a rule that is missing from the files is kept unless --prune is given
+        out = self.sync(changed[0])
+        self.assertIn("kept      AIPS-SP-0001", out)
+        self.assertEqual(self.scalar("SELECT status FROM rules WHERE rule_id='AIPS-SP-0001'"), "enabled")
+        out = self.sync(changed[0], extra=["--prune"])
+        self.assertIn("removed 1", out)
+        self.assertEqual(self.scalar("SELECT status FROM rules WHERE rule_id='AIPS-SP-0001'"), "deleted")
+
+    def test_sync_manual_dry_run_and_duplicate_names(self):
+        out = self.sync(*two_rules(), extra=["--dry-run"])
+        self.assertIn("[dry-run] nothing was written: created 2", out)
+        self.assertEqual(self.scalar("SELECT COUNT(*) FROM rules"), 0)
+        spec = two_rules()[0]
+        code, _ = run_cli(self.db, "sync-manual", "--file", str(write_json(self.tmp / "d.json", {"rules": [spec, spec]})), expect=None)
+        self.assertEqual(code, 1)
+
     def test_every_change_is_a_new_audited_revision(self):
         self.add_rules(*two_rules())
         run_cli(self.db, "update", "--id", "AIPS-PI-0001", "--set", "weight=0.5", "--reason", "tuning")

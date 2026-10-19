@@ -41,6 +41,8 @@ def run(name: str, conn: sqlite3.Connection, args) -> int:
             return _update(conn, args)
         if name == "add":
             return _add(conn, args)
+        if name == "sync-manual":
+            return _sync_manual(conn, args)
         if name == "restore-upstream":
             return _restore_upstream(conn, args)
     except MaintainError as exc:
@@ -290,6 +292,101 @@ def _add(conn: sqlite3.Connection, args) -> int:
     except _DryRun:
         return 0                                   # the transaction was rolled back
     if created:
+        print(NOTE_PUBLISH)
+    return 0
+
+
+# ---------------------------------------------------------------------------------------------
+# sync-manual: make the manual rules of the database equal to what the JSON files say
+# ---------------------------------------------------------------------------------------------
+def _load_specs(files: List[str]) -> List[Dict[str, Any]]:
+    specs: List[Dict[str, Any]] = []
+    seen: Dict[str, str] = {}
+    for f in files:
+        doc = json.loads(read_text(Path(f)))
+        items = doc["rules"] if isinstance(doc, dict) and "rules" in doc else doc if isinstance(doc, list) else [doc]
+        for spec in items:
+            name = spec.get("name")
+            if not name:
+                raise MaintainError(f"{f}: a rule has no 'name' (the name is the key that ties a JSON rule to a database rule)")
+            if name in seen:
+                raise MaintainError(f"rule name {name!r} appears in {seen[name]} and in {f}")
+            seen[name] = f
+            specs.append(spec)
+    return specs
+
+
+def _sync_tests(conn: sqlite3.Connection, rule_id: str, tests: Dict[str, List[str]]) -> Tuple[int, int]:
+    wanted = {(kind, sha256_text(text)): (kind, text) for kind, texts in tests.items() for text in texts}
+    have = {(r["kind"], r["text_sha256"]) for r in conn.execute(
+        "SELECT kind, text_sha256 FROM rule_tests WHERE rule_id = ? AND origin = 'manual'", (rule_id,))}
+    now = utc_now()
+    for key in sorted(set(wanted) - have):
+        kind, text = wanted[key]
+        conn.execute(
+            "INSERT OR IGNORE INTO rule_tests (rule_id, kind, text, text_sha256, lang, scan_source, expect_hit, origin, "
+            "note, created_at) VALUES (?,?,?,?,?,?,?, 'manual', ?, ?)",
+            (rule_id, kind, text, key[1], None, "user_input", 0 if kind == "negative" else 1, "manual rule test", now))
+    for key in sorted(have - set(wanted)):
+        conn.execute("DELETE FROM rule_tests WHERE rule_id = ? AND kind = ? AND text_sha256 = ? AND origin = 'manual'",
+                     (rule_id, key[0], key[1]))
+    return len(set(wanted) - have), len(have - set(wanted))
+
+
+def _sync_manual(conn: sqlite3.Connection, args) -> int:
+    specs = _load_specs(args.file)
+    counts = {"created": 0, "updated": 0, "unchanged": 0, "removed": 0}
+    try:
+        with dbm.tx(conn):
+            for spec in specs:
+                doc, tests, _ = build_manual_doc(conn, spec)
+                row = conn.execute("SELECT rule_id FROM rules WHERE origin='manual' AND name = ?", (doc["name"],)).fetchone()
+                if row is None:
+                    doc["rule_id"] = dbm.alloc_rule_id(conn, CATEGORY_CODE[doc["category"]])
+                    rev = dbm.write_revision(conn, doc, change_kind="create", actor=args.actor,
+                                             reason=args.reason or "manual rule (sync-manual)", origin="manual",
+                                             modified_locally=False)
+                    _sync_tests(conn, doc["rule_id"], tests)
+                    counts["created"] += 1
+                    print(f"created   {doc['rule_id']} (revision {rev}): {doc['name']}")
+                    continue
+                doc["rule_id"] = row["rule_id"]
+                head = dbm.head_doc(conn, row["rule_id"])
+                if head is not None and dbm.rule_doc_hash(head) == dbm.rule_doc_hash(doc):
+                    added, dropped = _sync_tests(conn, row["rule_id"], tests)
+                    counts["unchanged"] += 1
+                    if added or dropped:
+                        print(f"tests     {row['rule_id']}: +{added} -{dropped} sample(s): {doc['name']}")
+                    continue
+                rev = dbm.write_revision(conn, doc, change_kind="edit", actor=args.actor,
+                                         reason=args.reason or "manual rule changed in its JSON file (sync-manual)",
+                                         origin="manual", modified_locally=False)
+                _sync_tests(conn, row["rule_id"], tests)
+                counts["updated"] += 1
+                print(f"updated   {row['rule_id']} (revision {rev}): {doc['name']}")
+            names = {sp["name"] for sp in specs}
+            for r in conn.execute("SELECT rule_id, name FROM rules WHERE origin='manual' AND status <> 'deleted' ORDER BY rule_id").fetchall():
+                if r["name"] in names:
+                    continue
+                if not args.prune:
+                    print(f"kept      {r['rule_id']}: {r['name']!r} is in the database but in none of the given files "
+                          "(add --prune to delete such rules)")
+                    continue
+                head = dbm.head_doc(conn, r["rule_id"])
+                assert head is not None
+                head["status"] = "deleted"
+                dbm.write_revision(conn, head, change_kind="delete", actor=args.actor,
+                                   reason=args.reason or "no longer in the manual rule files (sync-manual --prune)",
+                                   origin="manual", modified_locally=False)
+                counts["removed"] += 1
+                print(f"removed   {r['rule_id']}: {r['name']}")
+            if args.dry_run:
+                raise _DryRun()
+    except _DryRun:
+        print("[dry-run] nothing was written: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+        return 0
+    print("sync-manual: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+    if counts["created"] or counts["updated"] or counts["removed"]:
         print(NOTE_PUBLISH)
     return 0
 
