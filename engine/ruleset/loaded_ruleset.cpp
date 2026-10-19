@@ -6,6 +6,7 @@ std::unique_ptr<ThreadScratch> LoadedRuleset::make_scratch() const {
     std::unique_ptr<ThreadScratch> s(new ThreadScratch());
     s->backend = backend->new_scratch();
     if (verifier) s->verify = verifier->new_scratch();
+    if (locator) s->locate = locator->new_scratch();
     return s;
 }
 

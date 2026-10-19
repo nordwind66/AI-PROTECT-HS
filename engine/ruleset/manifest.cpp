@@ -255,6 +255,17 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
                                              "; recompile the rules on this machine");
         }
     }
+    // ---- 4b. span locator for the evidence text: PCRE2 (interpreter, no JIT) over every pattern that can match ----------------
+    {
+        std::vector<int> all;
+        for (size_t i = 0; i < rs->data->patterns.size(); ++i) {
+            if (i < rs->disabled_pattern.size() && rs->disabled_pattern[i]) continue;
+            all.push_back(static_cast<int>(i));
+        }
+        Pcre2Limits ll = pl;
+        ll.use_jit = false;
+        rs->locator.reset(new Pcre2Set(*rs->data, all, ll));   // a pattern PCRE2 rejects only loses its evidence text
+    }
     // ---- 5. prove that a scratch space can be created (reload must fail HERE, not on the first scan) ------------------
     {
         LoadedRuleset::Lease lease = rs->lease();

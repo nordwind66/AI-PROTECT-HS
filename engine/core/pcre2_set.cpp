@@ -86,7 +86,7 @@ std::unique_ptr<Pcre2Set::Scratch> Pcre2Set::new_scratch() const {
 }
 
 Pcre2Set::Result Pcre2Set::match(int pattern_index, const char* data, size_t len, Scratch& scratch, uint64_t* end,
-                                 int* pcre_error) const {
+                                 int* pcre_error, uint64_t* start) const {
     if (!has(pattern_index)) return Result::NoMatch;
     Pcre2ScratchImpl& s = static_cast<Pcre2ScratchImpl&>(scratch);
     const pcre2_code* code = reinterpret_cast<const pcre2_code*>(codes_[static_cast<size_t>(pattern_index)]);
@@ -96,6 +96,10 @@ Pcre2Set::Result Pcre2Set::match(int pattern_index, const char* data, size_t len
         if (end != nullptr) {
             const PCRE2_SIZE* ov = pcre2_get_ovector_pointer(s.match_data_);
             *end = static_cast<uint64_t>(ov[1]);
+        }
+        if (start != nullptr) {
+            const PCRE2_SIZE* ov = pcre2_get_ovector_pointer(s.match_data_);
+            *start = static_cast<uint64_t>(ov[0]);
         }
         return Result::Match;
     }

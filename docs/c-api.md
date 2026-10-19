@@ -106,7 +106,7 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
               "scratch_pool_max": 64, "verify_budget_ms": 200},
   "policy":  {"allow_block": false, "on_error": "review", "on_verify_error": "review", "needs_context_review_at": 0.50,
               "thresholds": {"review": 0.30, "alert": 0.50, "block": 0.85}},
-  "output":  {"include_offsets": true, "include_names": false},
+  "output":  {"include_offsets": true, "include_names": true, "include_evidence_text": true},
   "pcre2":   {"match_limit": 1000000, "depth_limit": 10000, "heap_limit_kb": 20480, "use_jit": true}
 }
 ```
@@ -154,7 +154,7 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 | `decision` | `allow < review < alert < block`。默认 alert-only：不会出现 `block`，除非 `policy.allow_block=true` 且 `score ≥ block` 阈值 |
 | `score` / `risk_level` | 见 `docs/architecture.md` §6；`score` 为 6 位小数 |
 | `backend` | 实际产生结果的引擎：`hyperscan` 或明确命名的 `pcre2_fallback`，**绝不混称** |
-| `matched_rules[]` | 按风险降序；`pattern_ids` 是业务 Pattern ID；`counted=false` 表示同一 `score_group` 内另有更高风险规则；`evidence` 只有**偏移**（`end_view` 在被扫描视图里、`end_original` 尽力映射回原文），**没有匹配到的文本** |
+| `matched_rules[]` | 按风险降序；`pattern_ids` 是业务 Pattern ID；`counted=false` 表示同一 `score_group` 内另有更高风险规则；`name` 是规则名；`evidence[]` 是举证：`matched_text`（原文里命中的片段，保持用户的原始写法，含空格/符号/leetspeak 等混淆）、`normalized_text`（归一化后的写法，仅当与原文不同时给出，如 `忽 略 之 前`→`忽略之前`）、`sentence`（命中片段所在的句子）、`start_original`/`end_original`（原文字节偏移）、`end_view`（被扫描视图里的偏移）、`view`（命中的视图）。片段最长 256 字节、句子最长 400 字节，被截断时 `text_truncated=true`。配置 `output.include_evidence_text=false` 可以去掉全部文本，只留偏移 |
 | `needs_context[]` | 规则命中/部分命中但**无法完整求值**（`context_missing`：缺上下文键；`field_missing`：规则需要的字段没提供）。这是“不确定状态”，**不计入分数**；风险 ≥ `needs_context_review_at`（默认 0.50，可由 `policy.needs_context_review_at` 覆盖）时把 `allow` 抬到 `review` |
 | `warnings[]` | 例如 `unknown_source:…`、`pcre2_limit:<pattern>:…`（复核超限）、`verify_budget_exceeded:…`、`unverifiable_candidate:…` |
 | `inputs` | 实际检查的字段 / 忽略的字段 / 扫描的视图（`raw`、`fold_v1`、`deobf_v1`、`trans_v1`；与原文相同的视图只扫一次） |

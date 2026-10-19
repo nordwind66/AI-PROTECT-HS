@@ -103,9 +103,10 @@ Config parse_config(const uint8_t* data, size_t len) {
     }
     if (const Json* o = doc.get("output")) {
         if (!o->is_object()) bad("output must be an object");
-        only_keys(*o, {"include_offsets", "include_names"}, "output");
+        only_keys(*o, {"include_offsets", "include_names", "include_evidence_text"}, "output");
         if (const Json* v = o->get("include_offsets")) c.output.include_offsets = get_bool(*v, "output.include_offsets");
         if (const Json* v = o->get("include_names")) c.output.include_names = get_bool(*v, "output.include_names");
+        if (const Json* v = o->get("include_evidence_text")) c.output.include_evidence_text = get_bool(*v, "output.include_evidence_text");
     }
     if (const Json* p = doc.get("pcre2")) {
         if (!p->is_object()) bad("pcre2 must be an object");

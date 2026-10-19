@@ -27,6 +27,7 @@ struct ManifestInfo {
 struct ThreadScratch {
     std::unique_ptr<BackendScratch> backend;
     std::unique_ptr<Pcre2Set::Scratch> verify;   // null when the rule set has no prefilter patterns
+    std::unique_ptr<Pcre2Set::Scratch> locate;   // null when there is no locator
 };
 
 class LoadedRuleset {
@@ -38,6 +39,7 @@ public:
     std::shared_ptr<RuleSetData> data;
     std::unique_ptr<PatternBackend> backend;     // must be destroyed before `data` (declared after it)
     std::unique_ptr<Pcre2Set> verifier;          // confirms Hyperscan prefilter candidates; may be null
+    std::unique_ptr<Pcre2Set> locator;           // finds the exact span of a hit for the evidence text (all patterns, no JIT); may be null
     ManifestInfo info;
     std::vector<bool> disabled_pattern;          // indexed by pattern index: not compiled / failed
 

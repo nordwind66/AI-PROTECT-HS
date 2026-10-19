@@ -31,7 +31,8 @@ struct Policy {
 
 struct OutputOptions {
     bool include_offsets = true;               // evidence offsets (bytes) per matched pattern
-    bool include_names = false;                // rule names in matched_rules
+    bool include_names = true;                 // rule names in matched_rules
+    bool include_evidence_text = true;         // the matched fragment of the original text + its sentence in evidence[]
 };
 
 struct Config {

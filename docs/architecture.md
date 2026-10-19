@@ -78,7 +78,7 @@ sequenceDiagram
   S->>S: ③ 每个 profile×视图 做一次 Hyperscan 批量扫描(SINGLEMATCH)
   S->>S: ④ prefilter 候选 → PCRE2 精确复核(有 match/depth/heap 限额与时间预算)
   S->>S: ⑤ 三值条件求值 → 上下文门控 → 风险评分 → 决策
-  S-->>API: JSON（不含原文）
+  S-->>API: JSON（规则、风险、举证片段；可配置为不含原文）
   API-->>App: malloc 的缓冲区，调用 apg_free_buffer 释放
 ```
 
@@ -87,7 +87,7 @@ sequenceDiagram
 - **每个 profile 每个视图只扫描一次**（不是逐条规则扫描）；相同的视图（归一化后与原文一致）只扫一遍。
 - **只有 PCRE2 复核成功的命中才进入风险判定**；复核超限/超时记为 warning，并按 `policy.on_verify_error` 决定是否升到 `review`。
 - 输入问题（非法 UTF-8、过长、候选过多）不会让 C 函数失败，而是返回 `status:"error"` 的结构化结果，决策取自 `policy.on_error`（默认 `review`，不会悄悄放行）。
-- 结果里只有**偏移量**（`evidence`），没有匹配到的文本，默认日志不会泄露敏感内容。
+- 结果里的 `evidence` 带命中的原文片段和所在句子（`output.include_evidence_text`，默认开）；需要“结果不含任何请求文本”的场景把它设为 `false`，只留偏移量。
 
 ## 6. 规则模型与评分语义
 

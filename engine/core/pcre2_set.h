@@ -42,8 +42,9 @@ public:
     enum class Result { Match, NoMatch, Error };
     // Runs pattern `pattern_index` against the view text (valid UTF-8). *end receives the end offset of the
     // first match; *pcre_error the PCRE2 error code when the result is Error (match / depth / heap limit ...).
+    // *start (optional) receives the start offset of that match.
     Result match(int pattern_index, const char* data, size_t len, Scratch& scratch, uint64_t* end,
-                 int* pcre_error) const;
+                 int* pcre_error, uint64_t* start = nullptr) const;
 
     bool has(int pattern_index) const {
         return pattern_index >= 0 && static_cast<size_t>(pattern_index) < codes_.size() && codes_[pattern_index] != nullptr;

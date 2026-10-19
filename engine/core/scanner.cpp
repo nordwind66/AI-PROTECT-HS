@@ -77,6 +77,60 @@ uint64_t original_end(const Target& t, ViewKind k, bool changed, uint64_t end_vi
     return static_cast<uint64_t>(o) + l;
 }
 
+// ---- evidence text ---------------------------------------------------------------------------------------
+constexpr size_t kMaxEvidenceBytes = 256;     // matched fragment
+constexpr size_t kMaxSentenceBytes = 400;     // sentence around it
+
+// Largest cut <= pos that does not split a UTF-8 sequence.
+size_t utf8_floor(const char* s, size_t len, size_t pos) {
+    if (pos >= len) return len;
+    while (pos > 0 && (static_cast<uint8_t>(s[pos]) & 0xC0u) == 0x80u) --pos;
+    return pos;
+}
+
+// Length (1 or 3) of a sentence delimiter at `i`, 0 if none: newline, . ! ? ;  and the CJK 。！？；
+size_t sentence_delim(const char* s, size_t len, size_t i) {
+    const uint8_t c = static_cast<uint8_t>(s[i]);
+    if (c == '\n' || c == '.' || c == '!' || c == '?' || c == ';') return 1;
+    if (i + 2 < len) {
+        const uint8_t c1 = static_cast<uint8_t>(s[i + 1]), c2 = static_cast<uint8_t>(s[i + 2]);
+        if (c == 0xE3 && c1 == 0x80 && c2 == 0x82) return 3;                                   // 。
+        if (c == 0xEF && c1 == 0xBC && (c2 == 0x81 || c2 == 0x9F || c2 == 0x9B)) return 3;     // ！ ？ ；
+    }
+    return 0;
+}
+
+// The sentence of `text` that contains [so, eo): from after the previous delimiter to the next one (included), at most
+// kMaxSentenceBytes around the match. *truncated is set when the sentence had to be cut.
+std::string sentence_around(const char* text, size_t len, size_t so, size_t eo, bool* truncated) {
+    size_t b = so;
+    while (b > 0) {
+        size_t k = b - 1;
+        while (k > 0 && (static_cast<uint8_t>(text[k]) & 0xC0u) == 0x80u) --k;      // start of the previous character
+        if (sentence_delim(text, len, k) != 0 && k + sentence_delim(text, len, k) <= b) break;
+        b = k;
+    }
+    size_t e = eo;
+    while (e < len) {
+        const size_t d = sentence_delim(text, len, e);
+        if (d != 0) { e += d; break; }
+        ++e;
+        while (e < len && (static_cast<uint8_t>(text[e]) & 0xC0u) == 0x80u) ++e;
+    }
+    while (b < e && (text[b] == ' ' || text[b] == '\t' || text[b] == '\r' || text[b] == '\n')) ++b;
+    if (e - b > kMaxSentenceBytes) {
+        const size_t room = kMaxSentenceBytes > (eo - so) ? (kMaxSentenceBytes - (eo - so)) / 2 : 0;
+        size_t nb = so > room ? so - room : 0;
+        size_t ne = std::min(len, eo + room);
+        if (nb < b) nb = b;
+        if (ne > e) ne = e;
+        b = utf8_floor(text, len, nb);
+        e = utf8_floor(text, len, ne);
+        *truncated = true;
+    }
+    return std::string(text + b, e - b);
+}
+
 std::string decision_for_error(const Config& cfg) {
     const std::string& s = cfg.policy.on_error;
     if (s == "block" && !cfg.policy.allow_block) return "review";
@@ -150,6 +204,51 @@ void write_error_result(const LoadedRuleset& rs, const Config& cfg, const ScanIn
 }
 
 }  // namespace
+
+// Adds start_original / matched_text / normalized_text / sentence to an evidence object. The span comes from re-matching the
+// pattern with PCRE2 on the scanned view (Hyperscan only reports where a match ENDS); nothing is added when that fails.
+static void emit_evidence_text(JsonWriter& w, const LoadedRuleset& rs, ThreadScratch& sc, const Target& t, const HitInfo& h) {
+    if (!rs.locator || !sc.locate || !rs.locator->has(static_cast<int>(h.pattern_index))) return;
+    const ViewKind vk = static_cast<ViewKind>(h.view);
+    const char* vdata = t.text;
+    size_t vlen = t.len;
+    if (vk != ViewKind::Raw) {
+        const Normalized& n = t.norm[h.view];
+        vdata = n.text.data();
+        vlen = n.text.size();
+    }
+    uint64_t vs = 0, ve = 0;
+    int perr = 0;
+    if (rs.locator->match(static_cast<int>(h.pattern_index), vdata, vlen, *sc.locate, &ve, &perr, &vs) != Pcre2Set::Result::Match) return;
+    if (ve > vlen || vs > ve) return;
+    uint64_t so = vs, eo = ve;
+    if (vk != ViewKind::Raw) {
+        const Normalized& n = t.norm[h.view];
+        if (n.offsets.size() != n.text.size() + 1) return;           // offsets were not recorded
+        so = n.offsets[static_cast<size_t>(vs)];
+        eo = original_end(t, vk, true, ve);
+    }
+    if (eo > t.len || so >= eo) return;
+    bool cut = false;
+    size_t take = static_cast<size_t>(eo - so);
+    if (take > kMaxEvidenceBytes) {
+        take = utf8_floor(t.text + so, t.len - so, kMaxEvidenceBytes);
+        cut = true;
+    }
+    w.kv_uint("start_original", so);
+    w.kv_string("matched_text", std::string(t.text + so, take));
+    if (vk != ViewKind::Raw) {
+        std::string viewed(vdata + vs, static_cast<size_t>(ve - vs));
+        if (viewed.size() > kMaxEvidenceBytes) {
+            viewed.resize(utf8_floor(viewed.data(), viewed.size(), kMaxEvidenceBytes));
+            cut = true;
+        }
+        if (viewed != std::string(t.text + so, take)) w.kv_string("normalized_text", viewed);
+    }
+    bool sentence_cut = false;
+    w.kv_string("sentence", sentence_around(t.text, t.len, static_cast<size_t>(so), static_cast<size_t>(eo), &sentence_cut));
+    if (cut || sentence_cut) w.kv_bool("text_truncated", true);
+}
 
 std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, ThreadScratch& sc) {
     const auto t_start = std::chrono::steady_clock::now();
@@ -244,7 +343,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     }
 
     // ---- 3. scan every target with every profile ------------------------------------------------------------
-    const bool want_offsets = cfg.output.include_offsets;
+    const bool want_offsets = cfg.output.include_offsets || cfg.output.include_evidence_text;
     bool hit_limit = false, verify_failed = false;
     std::vector<Candidate> cands;
     for (Target& t : targets) {
@@ -523,6 +622,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
                 w.kv_string("view", view_name(static_cast<ViewKind>(h->view)));
                 w.kv_uint("end_view", h->end_view);
                 w.kv_uint("end_original", h->end_original);
+                if (cfg.output.include_evidence_text) emit_evidence_text(w, rs, sc, *t, *h);
                 w.end_object();
             }
             w.end_array();

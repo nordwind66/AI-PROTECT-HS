@@ -3,6 +3,30 @@
 本项目只提供**进程内的函数 API / CLI**，没有 HTTP 服务、没有 APISIX/网关适配、没有 Web UI（任务书明确不做）。把它嵌入你自己的程序，或在你自己的服务里包一层。
 接口契约见 `docs/c-api.md`，规则维护见 `docs/rule-maintenance.md`。以下建议基于代码与设计，**未经真实流量验证**。
 
+## 0. 自包含的动态库（推荐的交付方式）
+
+目标：**一个 `libai_prompt_guard.so` + 一个规则目录**，目标机器上不需要装 Hyperscan、PCRE2，也不需要和编译机相同的 libstdc++；其他程序只通过 C 接口（`include/ai_prompt_guard.h`）调用。
+
+在编译机（有 g++、cmake、ragel、libboost-dev）上：
+
+```bash
+# 1) 一次性：编译带 -fPIC 的静态 Hyperscan（发行版自带的 libhs.a 不是 PIC，链不进 .so）
+bash scripts/linux/build_hyperscan_static.sh --prefix /opt/hs-static          # 几分钟；需要访问 github.com 和 sourceforge.net
+# 2) 把 Hyperscan、PCRE2、libstdc++、libgcc 静态链接进 .so
+bash scripts/linux/build.sh --static --hyperscan-root /opt/hs-static        # 末尾会打印 ldd：只应剩 libc / libm
+# 3) 用同一个 Hyperscan 编译规则并激活（同一 libhs.a → 版本一致）
+bash scripts/linux/init_rules.sh --build-dir build/linux-static
+# 4) 打包
+bash scripts/linux/package.sh                                                # -> dist/package/ai-prompt-guard-<版本>-linux-x86_64.tar.gz
+```
+
+目标机器：`tar xzf …tar.gz && bash ai-prompt-guard-*/check.sh`（verify + 几条扫描），然后让你的程序 `dlopen`/链接 `lib/libai_prompt_guard.so`，配置 `{"manifest_path":".../rules/active.json"}`。
+
+- `.so` 只导出 11 个 `apg_*` 符号（version script），静态进来的 Hyperscan/PCRE2/C++ 运行库符号全部隐藏，不会和宿主程序里的同名库冲突；宿主自带旧 libstdc++ 的问题（见 §1）也不再出现。
+- 目标机器只需要 glibc（`ldd` 只有 `libc`/`libm`，glibc 版本不能比编译机旧太多，想要更广的兼容就在较旧的发行版上编译）。随包的 `bin/ai-prompt-guard` 另外依赖 `libsqlite3`，只用 `.so` 的程序不需要它。
+- 规则（`.hsdb`）绑定编译时的 Hyperscan 版本和 CPU 特性。`init_rules.sh` 默认 `--cpu-target generic`，静态库按 `nehalem`（SSE4.2）基线编译（`--arch haswell` 更快但要求 AVX2），所以在任何 2009 年以后的 x86-64 CPU 上都能加载；仍然以目标机上的 `check.sh`（`verify`）为准，不匹配会被拒绝而不是误用。
+- 规则包不小（1.1.0 约 85 MB，压缩后 17 MB）。运行时**不需要** SQLite 规则库和 Python。
+
 ## 1. 部署布局
 
 ```text
@@ -48,7 +72,7 @@ apg_scan_json(g_ctx, request_json, request_len, &out, &out_len);   // 或 apg_sc
    - `review`：弱信号或不确定（也包括文本无法扫描时的 `status:"error"`），建议转人工/二次审查或限制敏感操作；
    - `block` 只有在你显式设置 `policy.allow_block=true` 并经过自己数据的误报评估之后才使用。
 5. **不要把结果当作可信的“安全证明”。** `allow` 只表示“没有已知的正则信号”。改写、冷门语言、编码绕过、语义层攻击都可能漏掉（`reports/detection_eval.md` 列出了已知缺口）。把它作为纵深防御的一层。
-6. **日志脱敏。** 结果本身不含原文；你的日志也不要写完整 prompt、API key。`request_id` 原样回显，不要放敏感信息。
+6. **日志脱敏。** 结果默认含命中的片段和句子（`evidence[].matched_text` / `sentence`，最长 256 / 400 字节），记录日志前注意其中可能有敏感内容，不需要时配置 `output.include_evidence_text=false`；你的日志也不要写完整 prompt、API key。`request_id` 原样回显，不要放敏感信息。
 7. **限额。** 按业务设置 `limits.max_text_bytes`（默认 1 MiB），超过得到 `input_too_large`（`review`）。很长的文档在调用前先分块；每块独立判断，再自行合并。
 8. **失败策略显式化。** `policy.on_error`（文本无法扫描）与 `on_verify_error`（PCRE2 复核超限）默认都是 `review`；如果你的业务要 fail-open，请显式配置 `allow`，并把这一决定写进你的运行手册。
 9. **热更新。** 管理线程调用 `apg_reload`；失败只记录日志，旧规则继续服务。重载前确认新目录已通过 `ai-prompt-guard verify --manifest …`。

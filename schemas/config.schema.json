@@ -48,8 +48,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "include_offsets": { "type": "boolean", "default": true,  "description": "Add evidence[] (byte offsets only) to every matched rule." },
-        "include_names":   { "type": "boolean", "default": false, "description": "Add the rule name to every matched rule." }
+        "include_offsets": { "type": "boolean", "default": true,  "description": "Add evidence[] (byte offsets) to every matched rule." },
+        "include_names":   { "type": "boolean", "default": true,  "description": "Add the rule name to every matched rule." },
+        "include_evidence_text": { "type": "boolean", "default": true, "description": "Add the matched fragment of the original text, its normalised form and its sentence to every evidence[] entry (needs include_offsets). Set false when the result must not contain any text of the request." }
       }
     },
     "pcre2": {
