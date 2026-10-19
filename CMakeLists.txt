@@ -10,6 +10,7 @@ option(APG_WITH_HYPERSCAN "Use Hyperscan as the matching engine (production). OF
 option(APG_BUILD_CLI      "Build the ai-prompt-guard command line tool (needs SQLite3)" ON)
 option(APG_BUILD_TESTS    "Build the C++ unit tests and register the CTest tests" ON)
 option(APG_BUILD_EXAMPLES "Build the C / C++ / dlopen / LoadLibrary examples" ON)
+option(APG_STATIC_DEPS    "Linux: link Hyperscan, PCRE2, libstdc++ and libgcc statically into libai_prompt_guard.so (and the CLI), so the target machine needs only glibc. Needs libhs.a / libpcre2-8.a built with -fPIC. Use a fresh build directory when changing this option" OFF)
 option(APG_STATIC_RUNTIME "MSVC: link the static CRT (/MT) instead of the DLL CRT (/MD)" OFF)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -103,6 +104,10 @@ target_compile_definitions(ai_prompt_guard PRIVATE APG_BUILD_DLL)
 set_target_properties(ai_prompt_guard PROPERTIES
   OUTPUT_NAME ai_prompt_guard VERSION ${PROJECT_VERSION} SOVERSION 1
   CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+if(APG_STATIC_DEPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # the C++ runtime travels inside the library too; --exclude-libs keeps the archived Hyperscan / PCRE2 symbols private
+  target_link_options(ai_prompt_guard PRIVATE -static-libstdc++ -static-libgcc "LINKER:--exclude-libs,ALL")
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_options(ai_prompt_guard PRIVATE "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/engine/api/exports.map")
 endif()
@@ -120,6 +125,9 @@ if(APG_BUILD_CLI)
   add_executable(ai-prompt-guard cli/main.cpp cli/bench.cpp)
   apg_configure(ai-prompt-guard PRIVATE)
   target_link_libraries(ai-prompt-guard PRIVATE apg_build apg_core_static)
+  if(APG_STATIC_DEPS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_options(ai-prompt-guard PRIVATE -static-libstdc++ -static-libgcc)
+  endif()
   if(MINGW)
     target_link_options(ai-prompt-guard PRIVATE -municode)
   endif()

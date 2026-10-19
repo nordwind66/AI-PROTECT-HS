@@ -12,8 +12,14 @@ find_path(PCRE2_INCLUDE_DIR
   NAMES pcre2.h
   HINTS ${PCRE2_ROOT}/include $ENV{PCRE2_ROOT}/include ${PC_PCRE2_INCLUDE_DIRS})
 
+# APG_STATIC_DEPS (Linux): link the static archive into the shared library
+if(APG_STATIC_DEPS)
+  set(_pcre2_names libpcre2-8.a pcre2-8-static)
+else()
+  set(_pcre2_names pcre2-8 pcre2-8-static pcre2-8d)
+endif()
 find_library(PCRE2_LIBRARY
-  NAMES pcre2-8 pcre2-8-static pcre2-8d
+  NAMES ${_pcre2_names}
   HINTS ${PCRE2_ROOT}/lib $ENV{PCRE2_ROOT}/lib ${PC_PCRE2_LIBRARY_DIRS})
 
 include(FindPackageHandleStandardArgs)

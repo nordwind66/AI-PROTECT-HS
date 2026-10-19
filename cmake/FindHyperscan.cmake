@@ -14,8 +14,14 @@ find_path(Hyperscan_INCLUDE_DIR
   NAMES hs/hs.h
   HINTS ${HYPERSCAN_ROOT}/include $ENV{HYPERSCAN_ROOT}/include ${PC_HS_INCLUDE_DIRS})
 
+# APG_STATIC_DEPS (Linux): link the static archive, so the shared library carries Hyperscan inside it
+if(APG_STATIC_DEPS)
+  set(_hs_names libhs.a hs_static)
+else()
+  set(_hs_names hs libhs hs_static)
+endif()
 find_library(Hyperscan_LIBRARY
-  NAMES hs libhs hs_static
+  NAMES ${_hs_names}
   HINTS ${HYPERSCAN_ROOT}/lib $ENV{HYPERSCAN_ROOT}/lib ${PC_HS_LIBRARY_DIRS})
 
 include(FindPackageHandleStandardArgs)
