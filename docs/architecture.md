@@ -74,7 +74,7 @@ sequenceDiagram
   App->>API: 文本(UTF-8,显式长度) + 来源 + 上下文
   API->>E: Inflight 计数 +1；取当前规则集（shared_ptr 拷贝）
   E->>S: 借出 scratch（池化，一次扫描独占）
-  S->>S: ① 校验 UTF-8/长度  ② 生成视图 raw / fold_v1 / trans_v1
+  S->>S: ① 校验 UTF-8/长度  ② 生成视图 raw / fold_v1 / deobf_v1 / trans_v1
   S->>S: ③ 每个 profile×视图 做一次 Hyperscan 批量扫描(SINGLEMATCH)
   S->>S: ④ prefilter 候选 → PCRE2 精确复核(有 match/depth/heap 限额与时间预算)
   S->>S: ⑤ 三值条件求值 → 上下文门控 → 风险评分 → 决策
@@ -118,9 +118,10 @@ sequenceDiagram
 |---|---|
 | `raw` | 原文 |
 | `fold_v1` | 删除不可见/格式/双向控制字符（零宽、BOM、RLO…）→ 单字符 NFKC（全角→半角、花体、连字…）→ ATR 的西里尔/希腊形近字映射到拉丁。**中文不变。** 每个字节带原文偏移 |
+| `deobf_v1` | 在 `fold_v1` 之上的反混淆视图（无新增表）：① CJK 字符之间的分隔符（空格、`.` `-` `_` `*` `|` `/` 等，**不含**逗号、分号、换行等句读）删除，`忽 略 之 前` → `忽略之前`；② 3 个以上单个 ASCII 字母被**同一种**分隔符连接（`i.g.n.o.r.e`）时连成词；③ 词内 leetspeak 还原（至少 3 个字符、含字母和 leet 字符的 token：`0→o 3→e 4→a 5→s 7→t @→a $→s`，`1→i`，连续两个以上的 `1`→`l`），纯数字 / 价格不动。偏移照常映射回原文 |
 | `trans_v1` | 翻译检测器 `preprocess_text` 的精确复刻（去首尾空白、零宽、同形字、控制符、CJK 标点→ASCII…），**不做小写**（该来源的模式编译为不区分大小写） |
 
-规则 profile `fold_v1` 同时扫 `fold_v1` 与 `raw` 两个视图（ATR 语义：归一化视图优先，原文兜底）。C++ 表由 `tools/gen_unicode_tables.py` 从 Python `unicodedata` 生成并随源码提交（Unicode 16.0.0），`tests/fixtures/normalize_golden.jsonl` 是 Python 规范与 C++ 实现的共同黄金向量（C++ 侧待 Linux 验证）。
+规则 profile `fold_v1` 同时扫 `fold_v1` 与 `raw` 两个视图（ATR 语义：归一化视图优先，原文兜底）；profile `deobf_v1` 依次扫 `deobf_v1`、`fold_v1`、`raw`（1.1.0 起除翻译来源外的全部规则使用它，所以 1.0.0 的命中是 1.1.0 的子集）。`deobf_v1` 只在文本确实被改动时才多扫一遍。C++ 表由 `tools/gen_unicode_tables.py` 从 Python `unicodedata` 生成并随源码提交（Unicode 16.0.0），`tests/fixtures/normalize_golden.jsonl` 是 Python 规范与 C++ 实现的共同黄金向量（C++ 侧待 Linux 验证）。
 
 ## 8. 版本、产物与一致性
 

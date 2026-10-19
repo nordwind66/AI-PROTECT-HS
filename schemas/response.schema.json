@@ -30,7 +30,7 @@
         "text_bytes": { "type": "integer", "minimum": 0 },
         "fields_checked": { "type": "array", "items": { "type": "string" } },
         "fields_ignored": { "type": "array", "items": { "type": "string" } },
-        "views_scanned": { "type": "array", "items": { "enum": ["raw", "fold_v1", "trans_v1"] } }
+        "views_scanned": { "type": "array", "items": { "enum": ["raw", "fold_v1", "trans_v1", "deobf_v1"] } }
       }
     },
     "warnings": { "type": "array", "items": { "type": "string" }, "maxItems": 20 },
@@ -81,7 +81,7 @@
             "properties": {
               "pattern_id": { "type": "integer", "minimum": 1 },
               "field": { "type": "string" },
-              "view": { "enum": ["raw", "fold_v1", "trans_v1"] },
+              "view": { "enum": ["raw", "fold_v1", "trans_v1", "deobf_v1"] },
               "end_view": { "type": "integer", "minimum": 0, "description": "End byte offset of the (first) match in the scanned view" },
               "end_original": { "type": "integer", "minimum": 0, "description": "Best-effort end byte offset in the ORIGINAL text" }
             }

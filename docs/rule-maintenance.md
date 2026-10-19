@@ -24,7 +24,7 @@ flowchart TD
 
 ```bash
 python tools/rules.py sources sync --locked     # 按 third_party/sources.lock.json 物化三个上游仓库（需要 git；缺失时才联网）
-python tools/build_rules_db.py --fresh          # ≈17 秒：init → import all → add 手工规则 → verify-tests → validate --strict → publish 1.0.0 → 报告 → db check
+python tools/build_rules_db.py --fresh          # ≈17 秒：init → import all → add 手工规则 → verify-tests → validate --strict → publish 1.1.0 → 报告 → db check
 ```
 
 `build_rules_db.py` 的每一步都是普通的 `rules.py` 命令，可以手工逐步执行；完整输出保存在 `reports/build_rules_db.log`。两次全新构建得到**逐字节相同的快照**（SHA-256 `34e6d9af…527a7a`，1 679 307 字节）；数据库文件本身含时间戳，字节不同，`data/ai_prompt_rules.db.sha256` 只是交付指纹。

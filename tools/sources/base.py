@@ -61,7 +61,7 @@ class UnifiedHint:
     score_group: Optional[str] = None
     description: str = ""
     tags: List[str] = field(default_factory=list)
-    norm_profile: str = "fold_v1"
+    norm_profile: str = "deobf_v1"
     category_reason: str = ""
 
 

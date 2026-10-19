@@ -27,9 +27,9 @@ struct Target {
     const char* text = nullptr;
     size_t len = 0;
     std::vector<int> fields;  // rule field indexes this target supplies
-    Normalized norm[3];
-    bool computed[3] = {false, false, false};
-    bool changed[3] = {false, false, false};
+    Normalized norm[kViewKindCount];
+    bool computed[kViewKindCount] = {};
+    bool changed[kViewKindCount] = {};
     std::vector<uint64_t> bits;
     std::vector<HitInfo> hits;
     std::set<int> views_scanned;

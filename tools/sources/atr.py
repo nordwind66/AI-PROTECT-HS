@@ -148,7 +148,7 @@ class AtrImporter(SourceImporter):
         unified = UnifiedHint(
             name=title, category=category, severity=severity, weight=WEIGHT_BY_SEVERITY[severity],
             confidence=round(conf, 2), default_action="alert" if conf >= 0.5 else "review", status=status,
-            description=_collapse(doc.get("description")), tags=tag_list, norm_profile="fold_v1",
+            description=_collapse(doc.get("description")), tags=tag_list, norm_profile="deobf_v1",
             category_reason=why_cat)
 
         tests: List[SrcTest] = []

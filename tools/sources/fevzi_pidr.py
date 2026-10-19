@@ -140,7 +140,7 @@ class FevziImporter(SourceImporter):
                 weight=WEIGHT[sev], confidence=conf, default_action="alert" if conf >= 0.5 else "review",
                 description=str(r.get("description") or ""),
                 tags=["fevzi-pidr", f"fevzi-cat:{category_src}"] + [f"maps:{m}" for m in (r.get("maps_to") or [])[:4]],
-                norm_profile="fold_v1", category_reason="category map " + category_src)
+                norm_profile="deobf_v1", category_reason="category map " + category_src)
         tests: List[SrcTest] = []
         for sample in MANUAL_TESTS.get(rid, {}).get("pos", []):
             tests.append(SrcTest("positive", sample, True, "written for this project", "user_input",

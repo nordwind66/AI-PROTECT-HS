@@ -1,42 +1,42 @@
 {
   "database": {
-    "distinct_patterns": 1516,
+    "distinct_patterns": 1521,
     "patterns_by_class": {
-      "hs_native": 1500,
+      "hs_native": 1505,
       "hs_prefilter_pcre2": 16
     },
     "patterns_by_profile": {
-      "fold_v1": 1381,
+      "deobf_v1": 1386,
       "trans_v1": 135
     },
     "rules_by_category": {
       "data_exfiltration_instruction": 14,
       "instruction_hijacking": 31,
-      "instruction_override": 32,
-      "jailbreak": 116,
+      "instruction_override": 34,
+      "jailbreak": 117,
       "obfuscated_injection": 44,
       "prompt_injection": 39,
       "role_spoofing": 31,
-      "safety_bypass": 31,
-      "system_prompt_extraction": 18
+      "safety_bypass": 32,
+      "system_prompt_extraction": 19
     },
     "rules_by_lang": {
       "any": 6,
-      "en": 329,
-      "mixed": 16,
-      "zh": 5
+      "en": 331,
+      "mixed": 17,
+      "zh": 7
     },
     "source_patterns_deduplicated_into_shared_patterns": 30,
-    "tests": 3859,
-    "unified_rules": 356,
+    "tests": 3882,
+    "unified_rules": 361,
     "unified_rules_by_origin": {
       "imported": 343,
-      "manual": 13
+      "manual": 18
     },
     "unified_rules_by_status": {
       "deprecated": 2,
       "disabled": 2,
-      "enabled": 352
+      "enabled": 357
     }
   },
   "definitions": {
@@ -46,7 +46,7 @@
     "native / prefilter / unsupported": "fate of every source pattern: Hyperscan-native, Hyperscan prefilter + PCRE2 verification, or not convertible; excluded_* patterns never reach the engine",
     "source_rules": "rule definitions found in the locked upstream commit (ATR: one YAML file; trans: one detector group; fevzi: one rule entry)"
   },
-  "generated_at": "2026-10-17T03:28:40Z",
+  "generated_at": "2026-10-19T00:47:58Z",
   "sources": {
     "atr": {
       "commit_date": "2026-10-15T18:03:50-04:00",

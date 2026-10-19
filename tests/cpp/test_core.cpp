@@ -145,7 +145,8 @@ APG_TEST(normalize_matches_golden_vectors) {
         const std::string& input = row.get("input")->as_string();
         const uint8_t* in = reinterpret_cast<const uint8_t*>(input.data());
         struct P { ViewKind kind; const char* key; const char* off_key; };
-        const P profiles[] = {{ViewKind::FoldV1, "fold_v1", "fold_v1_offsets"}, {ViewKind::TransV1, "trans_v1", "trans_v1_offsets"}};
+        const P profiles[] = {{ViewKind::FoldV1, "fold_v1", "fold_v1_offsets"}, {ViewKind::TransV1, "trans_v1", "trans_v1_offsets"},
+                              {ViewKind::DeobfV1, "deobf_v1", "deobf_v1_offsets"}};
         for (const P& p : profiles) {
             Normalized n;
             const bool changed = normalize(p.kind, in, input.size(), true, n);

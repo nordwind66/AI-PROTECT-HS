@@ -6,6 +6,9 @@
 //             (NFKC of the single code point), Cyrillic/Greek look-alikes mapped to Latin
 //   trans_v1  the preprocessing of the translation detector (strip, zero-width removal, homoglyphs, whitespace
 //             collapse, control removal, CJK punctuation -> ASCII), without lower-casing
+//   deobf_v1  fold_v1, then three anti-obfuscation passes: separators between CJK characters removed
+//             ("忽 略 之 前" -> "忽略之前"), single letters spelled out with separators joined ("i.g.n.o.r.e" ->
+//             "ignore"), leetspeak inside words decoded ("pr3v1ous" -> "previous")
 #pragma once
 
 #include <cstddef>
@@ -15,7 +18,8 @@
 
 namespace apg {
 
-enum class ViewKind : int { Raw = 0, FoldV1 = 1, TransV1 = 2 };
+enum class ViewKind : int { Raw = 0, FoldV1 = 1, TransV1 = 2, DeobfV1 = 3 };
+constexpr int kViewKindCount = 4;
 
 const char* view_name(ViewKind k);
 bool view_from_name(const std::string& name, ViewKind* out);

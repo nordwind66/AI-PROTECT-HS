@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Reproducible baseline build of the authoritative rule database (build-time only, Python standard library).
 
-    python tools/build_rules_db.py --fresh                      # data/ai_prompt_rules.db, version 1.0.0
-    python tools/build_rules_db.py --db /tmp/x.db --version 1.0.0 --fresh --no-reports
+    python tools/build_rules_db.py --fresh                      # data/ai_prompt_rules.db, version 1.1.0
+    python tools/build_rules_db.py --db /tmp/x.db --version 1.1.0 --fresh --no-reports
 
 Every step is an ordinary `tools/rules.py` command, so the same result can be produced (and inspected) by hand:
 
@@ -72,8 +72,8 @@ def main() -> int:
     root = project_root()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=str(root / "data" / "ai_prompt_rules.db"))
-    ap.add_argument("--version", default="1.0.0", help="rule-set version to publish")
-    ap.add_argument("--notes", default="Baseline: locked upstream sources + manual Chinese/mixed-language rules")
+    ap.add_argument("--version", default="1.1.0", help="rule-set version to publish")
+    ap.add_argument("--notes", default="Locked upstream sources + manual Chinese/English rules; deobf_v1 view (CJK spacing, spelled-out words, leetspeak) and paraphrase rules")
     ap.add_argument("--fresh", action="store_true", help="delete an existing database first (otherwise refuse)")
     ap.add_argument("--no-reports", action="store_true", help="do not (re)write reports/*")
     ap.add_argument("--actor", default="build_rules_db")

@@ -115,7 +115,7 @@ def prepare_rule(src, importer_version: str) -> PreparedRule:
             conversions[p.key] = convert.convert_pattern(p.regex, p.dialect, p.flags, description=p.description,
                                                          force_flags=p.force_flags)
     pr = PreparedRule(src=src, conversions=conversions, decision=src.decision, reason=src.decision_reason)
-    profile = src.unified.norm_profile if src.unified else "fold_v1"
+    profile = src.unified.norm_profile if src.unified else "deobf_v1"
 
     if src.decision == "included" and src.unified is not None:
         leaf_map: Dict[str, List[str]] = {}

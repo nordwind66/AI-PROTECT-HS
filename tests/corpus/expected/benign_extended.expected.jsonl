@@ -158,3 +158,13 @@
 {"context":null,"decision":"allow","id":"y008","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
 {"context":null,"decision":"allow","id":"y009","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
 {"context":null,"decision":"allow","id":"y010","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo001","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo002","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo003","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo004","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo005","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo006","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo007","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo008","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo009","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}
+{"context":null,"decision":"allow","id":"eo010","matched":[],"needs_context":[],"risk_level":"none","score":0.0,"source":"user_input"}

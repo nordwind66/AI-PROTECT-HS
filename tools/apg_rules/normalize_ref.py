@@ -15,6 +15,13 @@ Profiles
             final lower() -- patterns of that source are compiled caseless instead:
               strip, remove zero-width set, homoglyph map, \\n \\t \\r -> ' ', collapse runs of ' ',
               drop characters < 0x20, CJK punctuation -> ASCII, strip.
+  deobf_v1  fold_v1, then anti-obfuscation passes (no extra tables):
+              1. fold_v1
+              2. separators between two CJK characters are removed ("忽 略 之 前" -> "忽略之前"); separators are
+                 DECOR_SEPS (space, tab, . - _ * | / ~ ` ' " + ^ #, middle dots), never sentence punctuation
+              3. three or more single ASCII letters joined by the SAME one of ' ' . - _ * are joined ("i.g.n.o.r.e")
+              4. leetspeak inside a word: in a token of [A-Za-z0-9@$] with >= 3 characters, >= 1 letter and >= 1 leet character,
+                 0->o 3->e 4->a 5->s 7->t @->a $->s, and 1->i (a run of two or more 1 -> l)
 Every function returns (text, offsets): offsets[i] is the byte offset in the ORIGINAL UTF-8 text of the
 character that produced output byte i; offsets[len(out_bytes)] == len(original_bytes).
 """
@@ -206,4 +213,99 @@ def trans_v1(text: str) -> Tuple[str, List[int]]:
     return out.finish(total)
 
 
-PROFILE_FUNCS = {"raw": raw, "fold_v1": fold_v1, "trans_v1": trans_v1}
+def _is_cjk(cp: int) -> bool:
+    return (0x3400 <= cp <= 0x4DBF or 0x4E00 <= cp <= 0x9FFF or 0xF900 <= cp <= 0xFAFF
+            or 0x20000 <= cp <= 0x2FFFF or 0x3040 <= cp <= 0x30FF)
+
+
+DECOR_SEPS = set(" \t.-_*|/~`'\"+^#") | {"\u00b7", "\u2022", "\u30fb"}
+SPELL_SEPS = set(" .-_*")
+LEET = {"0": "o", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
+
+
+def _is_letter(ch: str) -> bool:
+    return "a" <= ch.lower() <= "z" and ch.isascii()
+
+
+def _is_alnum(ch: str) -> bool:
+    return _is_letter(ch) or "0" <= ch <= "9"
+
+
+def deobf_v1(text: str) -> Tuple[str, List[int]]:
+    folded, foffs = fold_v1(text)
+    v: List[Tuple[str, int]] = []
+    pos = 0
+    for ch in folded:
+        v.append((ch, foffs[pos]))
+        pos += _utf8_len(ch)
+    # 2. separators between two CJK characters
+    a: List[Tuple[str, int]] = []
+    i = 0
+    while i < len(v):
+        if v[i][0] not in DECOR_SEPS:
+            a.append(v[i])
+            i += 1
+            continue
+        j = i
+        while j < len(v) and v[j][0] in DECOR_SEPS:
+            j += 1
+        if not (a and _is_cjk(ord(a[-1][0])) and j < len(v) and _is_cjk(ord(v[j][0]))):
+            a.extend(v[i:j])
+        i = j
+    # 3. a word spelled out letter by letter
+    b: List[Tuple[str, int]] = []
+    i = 0
+    while i < len(a):
+        if _is_letter(a[i][0]) and (i == 0 or not _is_alnum(a[i - 1][0])):
+            end, count = i, 1
+            sep = a[i + 1][0] if i + 1 < len(a) else ""
+            while (end + 2 < len(a) and sep in SPELL_SEPS and a[end + 1][0] == sep and _is_letter(a[end + 2][0])
+                   and (end + 3 >= len(a) or not _is_alnum(a[end + 3][0]))):
+                end += 2
+                count += 1
+            if count >= 3:
+                b.extend(a[k] for k in range(i, end + 1, 2))
+                i = end + 1
+                continue
+        b.append(a[i])
+        i += 1
+    # 4. leetspeak inside a word
+    c: List[Tuple[str, int]] = []
+    i = 0
+    while i < len(b):
+        if not (_is_alnum(b[i][0]) or b[i][0] in "@$"):
+            c.append(b[i])
+            i += 1
+            continue
+        j, letters, leet = i, 0, False
+        while j < len(b) and (_is_alnum(b[j][0]) or b[j][0] in "@$"):
+            ch = b[j][0]
+            if _is_letter(ch):
+                letters += 1
+            elif ch == "1" or ch in LEET:
+                leet = True
+            j += 1
+        if letters >= 1 and j - i >= 3 and leet:
+            k = i
+            while k < j:
+                ch, off = b[k]
+                if ch == "1":
+                    r = k
+                    while r < j and b[r][0] == "1":
+                        r += 1
+                    rep = "l" if r - k >= 2 else "i"
+                    c.extend((rep, b[m][1]) for m in range(k, r))
+                    k = r
+                else:
+                    c.append((LEET.get(ch, ch), off))
+                    k += 1
+        else:
+            c.extend(b[i:j])
+        i = j
+    out = _Out()
+    for ch, off in c:
+        out.add(ch, off)
+    return out.finish(len(text.encode("utf-8")))
+
+
+PROFILE_FUNCS = {"raw": raw, "fold_v1": fold_v1, "trans_v1": trans_v1, "deobf_v1": deobf_v1}

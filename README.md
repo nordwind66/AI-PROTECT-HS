@@ -8,10 +8,10 @@
 
 | 部分 | 状态 |
 |---|---|
-| **SQLite 规则库** `data/ai_prompt_rules.db` | ✅ **已生成并在开发机上验证**：三个开源来源（固定 commit）的真实规则 + 13 条手工中英文规则；`db check` 通过；已发布版本 `1.0.0`（352 条规则 / 1 500 个去重模式），快照字节级可复现 |
+| **SQLite 规则库** `data/ai_prompt_rules.db` | ✅ **已生成并在开发机上验证**：三个开源来源（固定 commit）的真实规则 + 13 条手工中英文规则；`db check` 通过；已发布版本 `1.1.0`（357 条规则 / 1 521 个去重模式；相对 1.0.0 新增 `deobf_v1` 归一化视图与 5 条改写类手工规则），快照字节级可复现 |
 | **规则工具链**（导入 / 转换 / 维护 / 发布 / 回滚 / 报告） | ✅ 已在开发机上运行；Python 标准库，**无需安装任何依赖**；Python 单元测试在本机通过（见 `reports/validation_matrix.md`） |
-| **C++ 引擎、Hyperscan 编译器、C ABI、CLI、DLL/SO** | ⚠️ **已完整编码并经人工逐行审查，但从未被编译或运行**（开发机没有 C/C++ 编译器，任务书禁止在用户机器上安装）。第一次在 Linux 上构建出现编译错误是预期的 |
-| **Linux 实测** | ⏳ **待 Linux 执行**：脚本、测试、差分语料、验收清单已备好（`docs/linux-testing.md`） |
+| **C++ 引擎、Hyperscan 编译器、C ABI、CLI、DLL/SO** | ✅ **Linux 已编译并实测**（Hyperscan 5.4.2 + PCRE2：`test.sh --backend both` 20/20，1 293 个样本与参考引擎 0 差异，原始日志在 `reports/logs/`）。1.1.0 的 `deobf_v1` 改动另在云端以 `pcre2_fallback` 后端验证：`cpp_unit`、Python 单测、e2e（含与参考引擎的差分）全部通过；**Hyperscan 后端尚未对 1.1.0 重新跑过** |
+| **Linux 实测** | ✅ 见 `reports/validation_matrix.md` §12；1.1.0 的 Hyperscan 编译/差分待在有 libhs 的机器上重跑（`docs/linux-testing.md`） |
 | **Windows 构建与 DLL** | ⏳ **Windows 未编译验证**。Hyperscan 在 Windows 上风险最高（`docs/windows-build.md`）；提供显式的 `pcre2_fallback` 保底后端 |
 | **性能** | ⏳ **待 Linux 实测**：本仓库**没有任何性能数字**；计划与脚本见 `reports/performance.md`、`scripts/linux/bench.sh` |
 
@@ -24,7 +24,7 @@ include/ai_prompt_guard.h        唯一的公共 C ABI（Linux/Windows 同一份
 engine/{core,ruleset,storage,api}   C++17：归一化 · Hyperscan/PCRE2 后端 · 评分 · 快照/manifest · 规则编译器 · 热更新 · C ABI 外壳
 cli/                              ai-prompt-guard：compile · verify · info · scan · scan-batch · bench · versions（+ 转发规则管理命令）
 sql/001_init.sql                  SQLite schema（含不可变性触发器、视图）
-data/ai_prompt_rules.db           权威规则库（含已发布的 1.0.0）· .sha256 · manual_rules/*.json（手工规则）
+data/ai_prompt_rules.db           权威规则库（含已发布的 1.1.0）· .sha256 · manual_rules/*.json（手工规则）
 tools/rules.py  tools/apg_rules/  规则管理命令行与实现（导入/转换/维护/发布/参考引擎/报告）
 tools/sources/                    三个来源的 importer 插件
 tools/build_rules_db.py           一键、可重复地构建规则库
@@ -80,9 +80,9 @@ python tools/rules.py --db $DB rollback --to 1.0.0 --pointer-dir dist/linux/x86_
 ## 5. 规则库里有什么（事实，来自 `reports/`）
 
 - 三个来源、867 条源规则、3 614 条源模式（**源规则数 ≠ 分组数 ≠ 模式数 ≠ 纳入数**，逐项区分见 `reports/source_inventory.md`）：ATR 836 / trans 11 / fevzi 20。
-- 纳入：339 条上游规则 + 13 条手工规则 = **352 条启用规则**；发布版 1.0.0 含 **1 500 个去重模式**（1 484 原生 Hyperscan + 16 需 PCRE2 复核；在 Linux 上编译时另有约 480 个因含大范围重复而降级为“预过滤 + PCRE2 复核”）。
+- 纳入：339 条上游规则 + 18 条手工规则 = **357 条启用规则**；发布版 1.1.0 含 **1 521 个去重模式**（1 505 原生 Hyperscan + 16 需 PCRE2 复核；在 Linux 上编译时另有约 480 个因含大范围重复而降级为“预过滤 + PCRE2 复核”）。
 - 排除（全部有原因记录）：524 条源规则（范围外 500、语义/embedding 类“不能表达为正则” 20、整条外语 4）；80 条外语模式、131 条无法表达或编译的模式（130 条语义类 + 1 条被 Hyperscan 和 PCRE2 同时拒绝的超大表达式）未进入引擎。
-- 语言分布（启用规则）：en 325、mixed 16、zh 5、any 6。**中文覆盖薄弱是事实**（上游以英文为主），已用 9 条手工中文规则补充，仍需真实流量验证。
+- 语言分布（启用规则）：en 325、mixed 16、zh 5、any 6。**中文覆盖薄弱是事实**（上游以英文为主），已用 12 条手工中文规则补充，仍需真实流量验证。
 - 测试样例 3 859 条（上游 3 727 + 手工 132）；每条启用规则至少 1 正例 + 1 负例；Python 参考引擎复算：一致 3 495、不一致 0（部分转换/不可复算的另行标记）。
 - 语料评估（Python 参考引擎，人工小语料，开发时参考过，**不是误报率/检出率估计**）：`reports/false_positive.md`、`reports/detection_eval.md`。
 

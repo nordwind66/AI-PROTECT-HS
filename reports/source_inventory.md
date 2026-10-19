@@ -1,6 +1,6 @@
 # 规则源清点 / Source inventory
 
-> 本文件由 `python tools/rules.py inventory` 从 SQLite (`data/ai_prompt_rules.db`) 生成，**请勿手工修改**。生成时间 2026-10-17T03:28:40Z。
+> 本文件由 `python tools/rules.py inventory` 从 SQLite (`data/ai_prompt_rules.db`) 生成，**请勿手工修改**。生成时间 2026-10-19T00:47:58Z。
 
 数字的含义不同，不能混为一个数：**源规则数 ≠ 分组数 ≠ 条件/Regex 模式数 ≠ 纳入数**。
 
@@ -67,13 +67,13 @@
 
 ## 数据库汇总
 
-- unified_rules: 356
-- unified_rules_by_origin: {'imported': 343, 'manual': 13}
-- unified_rules_by_status: {'deprecated': 2, 'disabled': 2, 'enabled': 352}
-- distinct_patterns: 1516
-- patterns_by_class: {'hs_native': 1500, 'hs_prefilter_pcre2': 16}
-- patterns_by_profile: {'fold_v1': 1381, 'trans_v1': 135}
+- unified_rules: 361
+- unified_rules_by_origin: {'imported': 343, 'manual': 18}
+- unified_rules_by_status: {'deprecated': 2, 'disabled': 2, 'enabled': 357}
+- distinct_patterns: 1521
+- patterns_by_class: {'hs_native': 1505, 'hs_prefilter_pcre2': 16}
+- patterns_by_profile: {'deobf_v1': 1386, 'trans_v1': 135}
 - source_patterns_deduplicated_into_shared_patterns: 30
-- tests: 3859
-- rules_by_category: {'jailbreak': 116, 'obfuscated_injection': 44, 'prompt_injection': 39, 'instruction_override': 32, 'instruction_hijacking': 31, 'role_spoofing': 31, 'safety_bypass': 31, 'system_prompt_extraction': 18, 'data_exfiltration_instruction': 14}
-- rules_by_lang: {'any': 6, 'en': 329, 'mixed': 16, 'zh': 5}
+- tests: 3882
+- rules_by_category: {'jailbreak': 117, 'obfuscated_injection': 44, 'prompt_injection': 39, 'instruction_override': 34, 'safety_bypass': 32, 'instruction_hijacking': 31, 'role_spoofing': 31, 'system_prompt_extraction': 19, 'data_exfiltration_instruction': 14}
+- rules_by_lang: {'any': 6, 'en': 331, 'mixed': 17, 'zh': 7}

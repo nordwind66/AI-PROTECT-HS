@@ -29,7 +29,7 @@
         "description": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
         "status": { "enum": ["enabled", "disabled"], "default": "enabled" },
-        "profile": { "enum": ["fold_v1", "trans_v1", "raw_v1"], "default": "fold_v1", "description": "Normalisation applied to the text before the patterns run" },
+        "profile": { "enum": ["fold_v1", "deobf_v1", "trans_v1", "raw_v1"], "default": "fold_v1", "description": "Normalisation applied to the text before the patterns run" },
         "condition": {
           "description": "'any' (default) or 'all' over all patterns, or a condition tree whose leaf ids are the pattern keys",
           "oneOf": [ { "enum": ["any", "all"] }, { "$ref": "#/$defs/condition" } ]

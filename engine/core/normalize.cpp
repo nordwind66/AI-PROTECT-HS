@@ -13,6 +13,7 @@ const char* view_name(ViewKind k) {
         case ViewKind::Raw: return "raw";
         case ViewKind::FoldV1: return "fold_v1";
         case ViewKind::TransV1: return "trans_v1";
+        case ViewKind::DeobfV1: return "deobf_v1";
     }
     return "raw";
 }
@@ -21,6 +22,7 @@ bool view_from_name(const std::string& name, ViewKind* out) {
     if (name == "raw") { *out = ViewKind::Raw; return true; }
     if (name == "fold_v1") { *out = ViewKind::FoldV1; return true; }
     if (name == "trans_v1") { *out = ViewKind::TransV1; return true; }
+    if (name == "deobf_v1") { *out = ViewKind::DeobfV1; return true; }
     return false;
 }
 
@@ -192,6 +194,140 @@ bool trans_v1(const uint8_t* in, size_t n, bool want_offsets, Normalized& out) {
     return out.text.size() != n || std::memcmp(out.text.data(), in, n) != 0;
 }
 
+// ---- deobf_v1 --------------------------------------------------------------------------------------------
+inline bool is_cjk(uint32_t cp) {
+    return (cp >= 0x3400u && cp <= 0x4DBFu) || (cp >= 0x4E00u && cp <= 0x9FFFu) || (cp >= 0xF900u && cp <= 0xFAFFu) ||
+           (cp >= 0x20000u && cp <= 0x2FFFFu) || (cp >= 0x3040u && cp <= 0x30FFu);
+}
+
+// Characters an attacker puts between the characters of a CJK word. Sentence punctuation (, ; : ! ? newline) is NOT here.
+inline bool is_decor_sep(uint32_t cp) {
+    switch (cp) {
+        case ' ': case '\t': case '.': case '-': case '_': case '*': case '|': case '/': case '~': case '`':
+        case '\'': case '"': case '+': case '^': case '#': case 0xB7u: case 0x2022u: case 0x30FBu:
+            return true;
+        default:
+            return false;
+    }
+}
+
+inline bool is_ascii_letter(uint32_t cp) { return (cp | 0x20u) >= 'a' && (cp | 0x20u) <= 'z'; }
+inline bool is_ascii_alnum(uint32_t cp) { return is_ascii_letter(cp) || (cp >= '0' && cp <= '9'); }
+inline bool is_spell_sep(uint32_t cp) { return cp == ' ' || cp == '.' || cp == '-' || cp == '_' || cp == '*'; }
+
+// Leetspeak digit/symbol -> letter ('1' is handled separately: "i", or "l" in a run of two or more); 0 = not leetspeak.
+inline uint32_t leet_letter(uint32_t cp) {
+    switch (cp) {
+        case '0': return 'o';
+        case '3': return 'e';
+        case '4': return 'a';
+        case '5': return 's';
+        case '7': return 't';
+        case '@': return 'a';
+        case '$': return 's';
+        default: return 0;
+    }
+}
+
+bool deobf_v1(const uint8_t* in, size_t n, bool want_offsets, Normalized& out) {
+    // 1. fold_v1, keeping the map back to the original text
+    Normalized f;
+    const bool folded = fold_v1(in, n, true, f);
+    const uint8_t* src = folded ? reinterpret_cast<const uint8_t*>(f.text.data()) : in;
+    const size_t sn = folded ? f.text.size() : n;
+    std::vector<Ch> v;
+    v.reserve(sn);
+    for (size_t i = 0; i < sn;) {
+        uint32_t cp = 0;
+        const size_t len = utf8_decode(src + i, sn - i, &cp);
+        v.push_back(Ch{cp, folded ? f.offsets[i] : static_cast<uint32_t>(i)});
+        i += len;
+    }
+    // 2. drop separators between two CJK characters
+    std::vector<Ch> a;
+    a.reserve(v.size());
+    for (size_t i = 0; i < v.size();) {
+        if (!is_decor_sep(v[i].cp)) {
+            a.push_back(v[i++]);
+            continue;
+        }
+        size_t j = i;
+        while (j < v.size() && is_decor_sep(v[j].cp)) ++j;
+        const bool drop = !a.empty() && is_cjk(a.back().cp) && j < v.size() && is_cjk(v[j].cp);
+        if (!drop) {
+            for (size_t k = i; k < j; ++k) a.push_back(v[k]);
+        }
+        i = j;
+    }
+    // 3. a word spelled out letter by letter ("i.g.n.o.r.e", "i-g-n-o-r-e"): three or more single letters joined by the same separator
+    std::vector<Ch> b;
+    b.reserve(a.size());
+    for (size_t i = 0; i < a.size();) {
+        if (is_ascii_letter(a[i].cp) && (i == 0 || !is_ascii_alnum(a[i - 1].cp))) {
+            size_t end = i;
+            size_t count = 1;
+            const uint32_t sep = (i + 1 < a.size()) ? a[i + 1].cp : 0;
+            while (end + 2 < a.size() && is_spell_sep(sep) && a[end + 1].cp == sep && is_ascii_letter(a[end + 2].cp) &&
+                   (end + 3 >= a.size() || !is_ascii_alnum(a[end + 3].cp))) {
+                end += 2;
+                ++count;
+            }
+            if (count >= 3) {
+                for (size_t k = i; k <= end; k += 2) b.push_back(a[k]);
+                i = end + 1;
+                continue;
+            }
+        }
+        b.push_back(a[i++]);
+    }
+    // 4. leetspeak inside a word: a token of [A-Za-z0-9@$] of 3+ characters with a letter and a leet character
+    std::vector<Ch> c;
+    c.reserve(b.size());
+    for (size_t i = 0; i < b.size();) {
+        if (!(is_ascii_alnum(b[i].cp) || b[i].cp == '@' || b[i].cp == '$')) {
+            c.push_back(b[i++]);
+            continue;
+        }
+        size_t j = i;
+        size_t letters = 0;
+        bool leet = false;
+        while (j < b.size() && (is_ascii_alnum(b[j].cp) || b[j].cp == '@' || b[j].cp == '$')) {
+            const uint32_t cp = b[j].cp;
+            if (is_ascii_letter(cp)) ++letters;
+            else if (cp == '1' || leet_letter(cp) != 0) leet = true;
+            ++j;
+        }
+        if (letters >= 1 && j - i >= 3 && leet) {
+            for (size_t k = i; k < j;) {
+                const uint32_t cp = b[k].cp;
+                if (cp == '1') {
+                    size_t r = k;
+                    while (r < j && b[r].cp == '1') ++r;
+                    const uint32_t rep = (r - k >= 2) ? 'l' : 'i';
+                    for (size_t m = k; m < r; ++m) c.push_back(Ch{rep, b[m].off});
+                    k = r;
+                } else {
+                    const uint32_t rep = leet_letter(cp);
+                    c.push_back(Ch{rep != 0 ? rep : cp, b[k].off});
+                    ++k;
+                }
+            }
+        } else {
+            for (size_t k = i; k < j; ++k) c.push_back(b[k]);
+        }
+        i = j;
+    }
+
+    out.text.clear();
+    out.offsets.clear();
+    out.text.reserve(n);
+    if (want_offsets) out.offsets.reserve(n + 1);
+    Sink sink(out, want_offsets);
+    for (const Ch& ch : c) sink.put(ch.cp, ch.off);
+    sink.finish(n);
+    return out.text.size() != n || std::memcmp(out.text.data(), in, n) != 0;
+}
+
 }  // namespace
 
 bool normalize(ViewKind kind, const uint8_t* input, size_t n, bool want_offsets, Normalized& out) {
@@ -210,6 +346,14 @@ bool normalize(ViewKind kind, const uint8_t* input, size_t n, bool want_offsets,
         }
         case ViewKind::TransV1: {
             const bool changed = trans_v1(input, n, want_offsets, out);
+            if (!changed) {
+                out.text.clear();
+                out.offsets.clear();
+            }
+            return changed;
+        }
+        case ViewKind::DeobfV1: {
+            const bool changed = deobf_v1(input, n, want_offsets, out);
             if (!changed) {
                 out.text.clear();
                 out.offsets.clear();

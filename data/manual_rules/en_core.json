@@ -47,7 +47,8 @@
           "Never say never: the library supports both modes.",
           "The form should answer without delay."
         ]
-      }
+      },
+      "profile": "deobf_v1"
     },
     {
       "name": "English: instruction to send secrets or history to an external address",
@@ -88,7 +89,8 @@
           "To reset your password, open https://example.com/reset and follow the steps.",
           "Please email the customer records request form to the privacy office."
         ]
-      }
+      },
+      "profile": "deobf_v1"
     },
     {
       "name": "English: identity replacement with a privileged or unrestricted role",
@@ -117,7 +119,8 @@
           "You are no longer a trainee, you are a full team member now.",
           "The assistant is no longer available; the shell is still running."
         ]
-      }
+      },
+      "profile": "deobf_v1"
     },
     {
       "name": "English: developer mode that suspends policies",
@@ -146,7 +149,8 @@
           "In developer mode you can inspect elements and edit the page styles.",
           "Enable developer mode in the browser to load an unpacked extension."
         ]
-      }
+      },
+      "profile": "deobf_v1"
     }
   ]
 }

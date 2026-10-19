@@ -157,7 +157,7 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 | `matched_rules[]` | 按风险降序；`pattern_ids` 是业务 Pattern ID；`counted=false` 表示同一 `score_group` 内另有更高风险规则；`evidence` 只有**偏移**（`end_view` 在被扫描视图里、`end_original` 尽力映射回原文），**没有匹配到的文本** |
 | `needs_context[]` | 规则命中/部分命中但**无法完整求值**（`context_missing`：缺上下文键；`field_missing`：规则需要的字段没提供）。这是“不确定状态”，**不计入分数**；风险 ≥ `needs_context_review_at`（默认 0.50，可由 `policy.needs_context_review_at` 覆盖）时把 `allow` 抬到 `review` |
 | `warnings[]` | 例如 `unknown_source:…`、`pcre2_limit:<pattern>:…`（复核超限）、`verify_budget_exceeded:…`、`unverifiable_candidate:…` |
-| `inputs` | 实际检查的字段 / 忽略的字段 / 扫描的视图（`raw`、`fold_v1`、`trans_v1`；与原文相同的视图只扫一次） |
+| `inputs` | 实际检查的字段 / 忽略的字段 / 扫描的视图（`raw`、`fold_v1`、`deobf_v1`、`trans_v1`；与原文相同的视图只扫一次） |
 | `duration_us` | 单次扫描耗时（微秒）。本文档不给出任何性能数字——待 Linux 实测 |
 
 **绝不输出**：原始文本、命中的片段、API key 等。`request_id` 原样回显，不要把敏感信息放进去。

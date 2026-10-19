@@ -1,6 +1,6 @@
 {
-  "ruleset_version": "1.0.0",
-  "snapshot_sha256": "34e6d9afaa76ca9920d9cac6c9f897e75bfb63bf5063c3dad12deb4117527a7a",
+  "ruleset_version": "1.1.0",
+  "snapshot_sha256": "83a45c5183e81bb906b0470630b61009778bce2c151f4d8bab1c6415eaa40c96",
   "engine": "python-reference (refengine.py)",
   "note": "results the C++ engine must reproduce on this exact snapshot"
 }

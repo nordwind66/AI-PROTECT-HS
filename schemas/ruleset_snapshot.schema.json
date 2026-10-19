@@ -23,7 +23,7 @@
             "required": ["views"],
             "additionalProperties": false,
             "properties": {
-              "views": { "type": "array", "minItems": 1, "items": { "enum": ["raw", "fold_v1", "trans_v1"] }, "description": "Every view is scanned; a pattern hits if it matches in ANY view." }
+              "views": { "type": "array", "minItems": 1, "items": { "enum": ["raw", "fold_v1", "trans_v1", "deobf_v1"] }, "description": "Every view is scanned; a pattern hits if it matches in ANY view." }
             }
           }
         }

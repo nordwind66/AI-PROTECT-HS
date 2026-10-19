@@ -157,7 +157,7 @@ CREATE TABLE rule_patterns (
     pattern_id    INTEGER PRIMARY KEY CHECK (pattern_id BETWEEN 1 AND 4294967295),
     regex         TEXT NOT NULL,                 -- canonical PCRE/Hyperscan-compatible expression
     flags         TEXT NOT NULL DEFAULT '',      -- subset of: i m s u
-    norm_profile  TEXT NOT NULL,                 -- fold_v1 | trans_v1 | raw_v1
+    norm_profile  TEXT NOT NULL,                 -- fold_v1 | deobf_v1 | trans_v1 | raw_v1
     lang          TEXT NOT NULL CHECK (lang IN ('zh', 'en', 'mixed', 'any')),
     engine_class  TEXT NOT NULL CHECK (engine_class IN
                     ('hs_native', 'hs_prefilter_pcre2', 'unsupported')),

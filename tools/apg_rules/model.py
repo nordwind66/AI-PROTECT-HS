@@ -17,6 +17,7 @@ ACTIONS = ["allow", "alert", "review", "block"]
 SCOPES = ["general", "translation_only", "context_required"]
 PROFILES = {
     "fold_v1": {"views": ["fold_v1", "raw"]},     # normalised view first, raw text as fallback (ATR semantics)
+    "deobf_v1": {"views": ["deobf_v1", "fold_v1", "raw"]},  # fold_v1 + anti-obfuscation view (CJK spacing, spelled-out words, leetspeak)
     "trans_v1": {"views": ["trans_v1"]},          # exact preprocessing of the translation detector
     "raw_v1": {"views": ["raw"]},
 }
