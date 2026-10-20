@@ -1,42 +1,42 @@
 {
   "database": {
-    "distinct_patterns": 1521,
+    "distinct_patterns": 2153,
     "patterns_by_class": {
-      "hs_native": 1505,
+      "hs_native": 2137,
       "hs_prefilter_pcre2": 16
     },
     "patterns_by_profile": {
-      "deobf_v1": 1386,
+      "deobf_v1": 2018,
       "trans_v1": 135
     },
     "rules_by_category": {
-      "data_exfiltration_instruction": 14,
-      "instruction_hijacking": 31,
-      "instruction_override": 34,
-      "jailbreak": 117,
-      "obfuscated_injection": 44,
-      "prompt_injection": 39,
-      "role_spoofing": 31,
-      "safety_bypass": 32,
-      "system_prompt_extraction": 19
+      "data_exfiltration_instruction": 25,
+      "instruction_hijacking": 51,
+      "instruction_override": 51,
+      "jailbreak": 168,
+      "obfuscated_injection": 60,
+      "prompt_injection": 60,
+      "role_spoofing": 44,
+      "safety_bypass": 43,
+      "system_prompt_extraction": 35
     },
     "rules_by_lang": {
       "any": 6,
-      "en": 331,
-      "mixed": 17,
-      "zh": 7
+      "en": 342,
+      "mixed": 125,
+      "zh": 64
     },
     "source_patterns_deduplicated_into_shared_patterns": 30,
-    "tests": 3882,
-    "unified_rules": 361,
+    "tests": 5502,
+    "unified_rules": 537,
     "unified_rules_by_origin": {
       "imported": 343,
-      "manual": 18
+      "manual": 194
     },
     "unified_rules_by_status": {
       "deprecated": 2,
       "disabled": 2,
-      "enabled": 357
+      "enabled": 533
     }
   },
   "definitions": {
@@ -46,7 +46,7 @@
     "native / prefilter / unsupported": "fate of every source pattern: Hyperscan-native, Hyperscan prefilter + PCRE2 verification, or not convertible; excluded_* patterns never reach the engine",
     "source_rules": "rule definitions found in the locked upstream commit (ATR: one YAML file; trans: one detector group; fevzi: one rule entry)"
   },
-  "generated_at": "2026-10-19T00:47:58Z",
+  "generated_at": "2026-10-20T02:55:23Z",
   "sources": {
     "atr": {
       "commit_date": "2026-10-15T18:03:50-04:00",
