@@ -16,6 +16,13 @@ if(MSVC)
   target_compile_definitions(example_c_scan_loop PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
+if(UNIX)
+  add_executable(example_c_bench_live c/bench_live.c)
+  target_include_directories(example_c_bench_live PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_link_libraries(example_c_bench_live PRIVATE ai_prompt_guard Threads::Threads m)
+  set_target_properties(example_c_bench_live PROPERTIES C_STANDARD 11 C_EXTENSIONS ON)
+endif()
+
 add_executable(example_cpp_scan cpp/scan.cpp)
 target_include_directories(example_cpp_scan PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(example_cpp_scan PRIVATE ai_prompt_guard Threads::Threads)
