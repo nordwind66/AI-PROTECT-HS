@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-prompt-guard.invalid/schemas/ruleset_snapshot.schema.json",
+  "title": "Published rule-set snapshot (intermediate representation, ruleset.meta.json)",
+  "description": "Canonical JSON (sorted keys, no whitespace, UTF-8) built by `rules.py publish` ONLY from immutable rule revisions and patterns, stored in SQLite (ruleset_snapshots) and copied byte-for-byte next to the compiled databases. Its SHA-256 is pinned in ruleset_versions, in manifest.json and checked at load time.",
+  "type": "object",
+  "required": ["format", "format_version", "normalizer", "field_map", "scoring", "patterns", "rules", "ruleset"],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "apg-ruleset-snapshot" },
+    "format_version": { "const": 1 },
+    "normalizer": {
+      "type": "object",
+      "required": ["tables_version", "profiles"],
+      "additionalProperties": false,
+      "properties": {
+        "tables_version": { "type": "integer", "minimum": 1 },
+        "profiles": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "required": ["views"],
+            "additionalProperties": false,
+            "properties": {
+              "views": { "type": "array", "minItems": 1, "items": { "enum": ["raw", "fold_v1", "trans_v1", "deobf_v1"] }, "description": "Every view is scanned; a pattern hits if it matches in ANY view." }
+            }
+          }
+        }
+      }
+    },
+    "field_map": {
+      "type": "object",
+      "description": "Which rule fields a text of a given source supplies.",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["model", "thresholds", "source_multiplier", "risk_levels", "group_combine", "needs_context_review_at"],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "const": "noisy_or_v1" },
+        "thresholds": {
+          "type": "object",
+          "required": ["review", "alert", "block"],
+          "additionalProperties": false,
+          "properties": {
+            "review": { "type": "number", "minimum": 0, "maximum": 1 },
+            "alert": { "type": "number", "minimum": 0, "maximum": 1 },
+            "block": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "source_multiplier": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0 } },
+        "risk_levels": {
+          "type": "array",
+          "items": { "type": "array", "prefixItems": [ { "type": "string" }, { "type": "number" } ], "minItems": 2, "maxItems": 2 },
+          "description": "[name, lower bound], descending"
+        },
+        "group_combine": { "const": "max" },
+        "needs_context_review_at": { "type": "number", "minimum": 0, "maximum": 1, "description": "A rule that could not be evaluated completely raises the decision to review only if its risk is at least this high." }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "regex", "flags", "profile", "class", "lang"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "integer", "minimum": 1, "description": "Stable pattern id (allocated from 10001, never reused)." },
+          "regex": { "type": "string", "minLength": 1, "description": "Canonical PCRE-compatible expression (UTF-8)." },
+          "flags": { "type": "string", "pattern": "^[imsu]*$" },
+          "profile": { "type": "string" },
+          "class": { "enum": ["hs_native", "hs_prefilter_pcre2"], "description": "hs_prefilter_pcre2: Hyperscan only proposes candidates (HS_FLAG_PREFILTER); PCRE2 must confirm before the hit counts." },
+          "lang": { "enum": ["zh", "en", "mixed", "any"] }
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "revision", "name", "category", "lang", "severity", "weight", "confidence", "action", "scope",
+                     "context_requires", "score_group", "condition", "leaves"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^AIPS-[A-Z]{2}-[0-9]{4,}$" },
+          "revision": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string" },
+          "category": { "enum": ["prompt_injection", "jailbreak", "role_spoofing", "instruction_override", "instruction_hijacking",
+                                 "system_prompt_extraction", "safety_bypass", "obfuscated_injection", "data_exfiltration_instruction"] },
+          "lang": { "enum": ["zh", "en", "mixed", "any"] },
+          "severity": { "enum": ["info", "low", "medium", "high", "critical"] },
+          "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "NOT the severity: how often a hit of this rule is a real attack." },
+          "action": { "enum": ["allow", "alert", "review", "block"], "description": "The rule author's suggestion; the decision comes from the score and the configured policy." },
+          "scope": { "enum": ["general", "translation_only", "context_required"] },
+          "context_requires": {
+            "type": ["object", "null"],
+            "additionalProperties": { "type": ["string", "integer", "boolean"] },
+            "description": "Facts the request context must provide, e.g. {\"task\": \"translation\"}."
+          },
+          "score_group": { "type": ["string", "null"], "description": "Rules of one group count once (maximum), not as independent signals." },
+          "condition": { "$ref": "#/$defs/condition" },
+          "leaves": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "pattern_id", "field"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string" },
+                "pattern_id": { "type": "integer", "minimum": 1 },
+                "field": { "type": "string", "description": "user_input, content, tool_response, agent_output, agent_message, tool_args, tool_name, tool_description, tool_input" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "required": ["version", "content_digest", "source_digest"],
+      "additionalProperties": false,
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$" },
+        "content_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the canonical JSON of everything above" },
+        "source_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 over the locked upstream commits + extractor versions" }
+      }
+    }
+  },
+  "$defs": {
+    "condition": {
+      "description": "Three-valued condition tree over leaves: a leaf whose field was not supplied is UNKNOWN (not false). any: true if one child is true, false if all are false, else unknown. all: false if one child is false, true if all are true, else unknown. not: negates, unknown stays unknown.",
+      "oneOf": [
+        { "type": "object", "required": ["op", "id"], "additionalProperties": false, "properties": { "op": { "const": "leaf" }, "id": { "type": "string" } } },
+        { "type": "object", "required": ["op", "args"], "additionalProperties": false,
+          "properties": { "op": { "enum": ["any", "all"] }, "args": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "required": ["op", "args"], "additionalProperties": false,
+          "properties": { "op": { "const": "not" }, "args": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "$ref": "#/$defs/condition" } } } }
+      ]
+    }
+  }
+}

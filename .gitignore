@@ -1,6 +1,6 @@
 # build products
-/build/
-/dist/
+build/
+dist/
 CMakeUserPresets.json
 *.o
 *.obj
@@ -19,7 +19,7 @@ __pycache__/
 .pytest_cache/
 
 # bare git caches used to materialise the locked upstream commits (disposable; `rules.py sources sync --locked` re-creates them)
-/third_party/.cache/
+third_party/.cache/
 
 # scratch / local work
 /.scratch/
@@ -33,20 +33,15 @@ __pycache__/
 *.db-shm
 
 # generated benchmark output (numbers must stay next to the host description that produced them; commit deliberately)
-/reports/bench_*
+reports/bench_*
 
 # backups of files overwritten by a sync to the Linux machine
 /.sync-backup/
 
 # in-source CMake output (always configure out of source: cmake -S . -B build/...)
-/CMakeCache.txt
-/CMakeFiles/
-/Makefile
-/cmake_install.cmake
-/CTestTestfile.cmake
-/Testing/
-/examples/CMakeCache.txt
-/examples/CMakeFiles/
-/examples/Makefile
-/examples/cmake_install.cmake
-/examples/CTestTestfile.cmake
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
