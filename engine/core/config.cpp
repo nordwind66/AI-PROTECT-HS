@@ -48,7 +48,7 @@ Config parse_config(const uint8_t* data, size_t len) {
         bad(e.what());
     }
     if (!doc.is_object()) bad("top level must be an object");
-    only_keys(doc, {"schema_version", "manifest_path", "limits", "policy", "output", "pcre2"}, "the top level");
+    only_keys(doc, {"schema_version", "manifest_path", "verify_ruleset", "limits", "policy", "output", "pcre2"}, "the top level");
     Config c;
     if (const Json* v = doc.get("schema_version")) {
         if (!v->is_int() || v->as_int() != 1) bad("schema_version must be 1");
@@ -56,6 +56,7 @@ Config parse_config(const uint8_t* data, size_t len) {
     const Json* mp = doc.get("manifest_path");
     if (mp == nullptr || !mp->is_string() || mp->as_string().empty()) bad("manifest_path (string) is required");
     c.manifest_path = mp->as_string();
+    if (const Json* v = doc.get("verify_ruleset")) c.verify_ruleset = get_bool(*v, "verify_ruleset");
 
     if (const Json* l = doc.get("limits")) {
         if (!l->is_object()) bad("limits must be an object");

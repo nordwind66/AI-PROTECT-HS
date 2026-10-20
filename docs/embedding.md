@@ -24,7 +24,7 @@ bash scripts/linux/package.sh                                                # -
 
 - `.so` 只导出 11 个 `apg_*` 符号（version script），静态进来的 Hyperscan/PCRE2/C++ 运行库符号全部隐藏，不会和宿主程序里的同名库冲突；宿主自带旧 libstdc++ 的问题（见 §1）也不再出现。
 - 目标机器只需要 glibc（`ldd` 只有 `libc`/`libm`，glibc 版本不能比编译机旧太多，想要更广的兼容就在较旧的发行版上编译）。随包的 `bin/ai-prompt-guard` 另外依赖 `libsqlite3`，只用 `.so` 的程序不需要它。
-- 规则（`.hsdb`）绑定编译时的 Hyperscan 版本和 CPU 特性。`init_rules.sh` 默认 `--cpu-target generic`，静态库按 `nehalem`（SSE4.2）基线编译（`--arch haswell` 更快但要求 AVX2），所以在任何 2009 年以后的 x86-64 CPU 上都能加载；仍然以目标机上的 `check.sh`（`verify`）为准，不匹配会被拒绝而不是误用。
+- 规则（`.hsdb`）绑定编译时的 Hyperscan 版本和 CPU 特性。`init_rules.sh` 默认 `--cpu-target generic`，静态库按 `nehalem`（SSE4.2）基线编译（`--arch haswell` 更快但要求 AVX2），所以在任何 2009 年以后的 x86-64 CPU 上都能加载；加载时不做版本/哈希校验，Hyperscan 自己会拒绝版本或 CPU 特性不兼容的数据库（不会误用）；要在部署前做完整校验，用目标机上的 `check.sh`（`verify`）。
 - 规则包不小（1.1.0 约 85 MB，压缩后 17 MB）。运行时**不需要** SQLite 规则库和 Python。
 
 ## 1. 部署布局
@@ -39,7 +39,7 @@ your-app/
     └── active.json                     # {"kind":"apg-active-pointer", "manifest":"1.0.0/manifest.json", "manifest_sha256":…}
 ```
 
-- `rules/` 来自 `ai-prompt-guard compile` 在**目标机器**上的输出（`dist/<os>/<arch>/…`）。**不要**把一台机器编译的 `.hsdb` 拷到另一台（Hyperscan 版本 / CPU 特性 / OS 不同会被加载阶段拒绝）。要更新规则：在目标机器上用 SQLite 里已发布的版本重新编译（`scripts/linux/init_rules.sh`）。
+- `rules/` 来自 `ai-prompt-guard compile` 在**目标机器**上的输出（`dist/<os>/<arch>/…`）。**不要**把一台机器编译的 `.hsdb` 拷到另一台（Hyperscan 版本 / CPU 特性 / OS 不同会被 Hyperscan 在加载阶段拒绝）。要更新规则：在目标机器上用 SQLite 里已发布的版本重新编译（`scripts/linux/init_rules.sh`）。
 - 运行时**不需要** SQLite、Python、规则库文件。
 - **宿主进程自带较旧的 libstdc++ 时**（典型：conda / venv 的 Python 通过 ctypes 加载）：`dlopen` 报错 “GLIBCXX_3.4.xx not found (required by libai_prompt_guard.so)”，因为宿主先加载了自己的旧 libstdc++。这是环境冲突，不是库的缺陷（Linux 第一次实测遇到过，见 `reports/PROGRESS.md` §10）。处理办法按推荐顺序：① 用系统自带的 Python 或不在 conda 环境里的宿主；② 启动时 `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6`（路径用 `ldconfig -p | grep libstdc++` 查）；③ 在 conda 里升级 `libstdcxx-ng`（会改动环境）。Hyperscan 的 `libhs` 也依赖系统的 libstdc++，所以只给本库静态链接 libstdc++ 解决不了这个问题。
 - 应用启动时 `manifest_path` 指向 `rules/active.json`，这样升级/回滚只需要改指针并 `apg_reload`。
@@ -64,7 +64,7 @@ apg_scan_json(g_ctx, request_json, request_len, &out, &out_len);   // 或 apg_sc
 // 解析 out（decision / matched_rules / needs_context），然后 apg_free_buffer(out)
 ```
 
-1. **一次创建，多线程共享。** 不要每个请求创建/销毁上下文——加载包含哈希校验与数据库反序列化。
+1. **一次创建，多线程共享。** 不要每个请求创建/销毁上下文——加载包含数据库反序列化与 PCRE2 对象构建。
 2. **如实标注来源。** 用户输入 → `user_input`；工具/MCP 返回、网页、检索到的文档 → `tool_output` / `rag_document`（间接注入风险更高，系数 ×1.15，字段映射也不同）；其他 Agent 的消息 → `agent_message`。
 3. **声明场景上下文。** 翻译/改写类应用必须传 `{"context": {"task": "translation"}}`，否则“仅翻译场景”的规则不会计入分数，只出现在 `needs_context` 里，并在其风险达到 `needs_context_review_at`（默认 0.50）时把 `allow` 抬到 `review`——引擎不假装条件已经成立，也不假装没看见。这是集成方的责任：翻译场景请传上下文；**没有翻译类场景**的应用可以设置 `policy.needs_context_review_at: 1.0` 关闭这类 `review`（它们对普通中文指令句偶有噪声，见 `reports/false_positive.md`），发现仍可在 `needs_context[]` 里看到。
 4. **按 `decision` 处理，而不是 `matched_rules` 非空。** 默认只有 `allow / review / alert`：

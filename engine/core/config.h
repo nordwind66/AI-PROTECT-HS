@@ -37,6 +37,10 @@ struct OutputOptions {
 
 struct Config {
     std::string manifest_path;
+    // false (default): the rule set is loaded as it is -- Hyperscan itself refuses a database it cannot use (other version,
+    // CPU features), and no hash / version / platform bookkeeping of the manifest is checked. true: the full integrity and
+    // compatibility verification of the manifest (used by `ai-prompt-guard verify` and the compiler's self test).
+    bool verify_ruleset = false;
     Limits limits;
     Policy policy;
     OutputOptions output;

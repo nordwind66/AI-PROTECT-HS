@@ -954,6 +954,7 @@ CompileReport compile_ruleset(const CompileOptions& opt, const std::function<voi
     if (opt.verify_after_build) {
         Config cfg;
         cfg.manifest_path = path_join(tmp_dir, "manifest.json");
+        cfg.verify_ruleset = true;
         (void)load_ruleset(cfg.manifest_path, cfg);
         log("self-test: the compiled rule set loads and verifies on this machine");
     }

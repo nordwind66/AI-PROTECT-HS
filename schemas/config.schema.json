@@ -12,6 +12,10 @@
       "type": "string", "minLength": 1,
       "description": "Path of dist/<os>/<arch>/<ruleset_version>/manifest.json, or of the dist/<os>/<arch>/active.json pointer written by 'rules.py activate --pointer-dir'. A path that does not exist -> APG_ERR_CONFIG."
     },
+    "verify_ruleset": {
+      "type": "boolean", "default": false,
+      "description": "false (default): the rule set is loaded as it is; no hash / version / platform bookkeeping of the manifest is checked, and Hyperscan itself refuses a database it cannot use (other Hyperscan version, missing CPU features). true: full verification of the manifest (SHA-256 of every file, build_hash, ABI and normalisation-table versions, OS / arch, Hyperscan version string, CPU features). `ai-prompt-guard verify` and the rule compiler self-test always run with true."
+    },
     "limits": {
       "type": "object",
       "additionalProperties": false,

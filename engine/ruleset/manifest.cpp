@@ -58,7 +58,7 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
             const std::string rel = need(first, "manifest", "active pointer").as_string();
             const std::string target = resolve_inside(path_dir(manifest_path), rel);
             const Json* want = first.get("manifest_sha256");
-            if (want != nullptr && want->is_string()) {
+            if (cfg.verify_ruleset && want != nullptr && want->is_string()) {
                 std::string have, err;
                 if (!sha256_file(target, &have, &err)) bad(err);
                 if (have != want->as_string()) bad("active pointer: manifest sha256 does not match (pointer is stale)");
@@ -80,18 +80,18 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
         throw Error(Status::Version, "manifest version " + std::to_string(need(m, "manifest_version", "manifest").as_int()) +
                                          " is not supported by this engine");
     }
-    if (need(m, "build_hash", "manifest").as_string() != manifest_build_hash(m)) {
+    if (cfg.verify_ruleset && need(m, "build_hash", "manifest").as_string() != manifest_build_hash(m)) {
         bad("manifest build_hash does not match its content (the manifest was modified)");
     }
     const Json& eng = need(m, "engine", "manifest");
-    if ((static_cast<uint32_t>(need(eng, "abi_version", "engine").as_int()) >> 16) != (kAbiVersion >> 16)) {
+    if (cfg.verify_ruleset && (static_cast<uint32_t>(need(eng, "abi_version", "engine").as_int()) >> 16) != (kAbiVersion >> 16)) {
         throw Error(Status::Version, "rule set was built for another engine ABI major version");
     }
-    if (need(eng, "norm_tables_version", "engine").as_int() != static_cast<int64_t>(kNormTablesVersion)) {
+    if (cfg.verify_ruleset && need(eng, "norm_tables_version", "engine").as_int() != static_cast<int64_t>(kNormTablesVersion)) {
         throw Error(Status::Version, "rule set was built with other normalisation tables");
     }
     const Json& tgt = need(m, "target", "manifest");
-    if (need(tgt, "os", "target").as_string() != APG_OS_NAME || need(tgt, "arch", "target").as_string() != APG_ARCH_NAME) {
+    if (cfg.verify_ruleset && (need(tgt, "os", "target").as_string() != APG_OS_NAME || need(tgt, "arch", "target").as_string() != APG_ARCH_NAME)) {
         throw Error(Status::Platform, "rule set was compiled for " + need(tgt, "os", "target").as_string() + "/" +
                                           need(tgt, "arch", "target").as_string() + " but this process is " APG_OS_NAME "/" APG_ARCH_NAME);
     }
@@ -104,13 +104,13 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
     const std::string meta_path = resolve_inside(base_dir, need(meta, "path", "files.meta").as_string());
     const std::string meta_bytes = read_checked(meta_path, 256u << 20);
     const std::string meta_sha = sha256_hex(meta_bytes);
-    if (meta_sha != need(meta, "sha256", "files.meta").as_string() ||
-        meta_sha != need(rsj, "snapshot_sha256", "ruleset").as_string()) {
+    if (cfg.verify_ruleset && (meta_sha != need(meta, "sha256", "files.meta").as_string() ||
+                               meta_sha != need(rsj, "snapshot_sha256", "ruleset").as_string())) {
         bad("ruleset metadata file does not match the sha256 recorded in the manifest");
     }
     std::shared_ptr<RuleSetData> data = parse_snapshot(meta_bytes);
-    if (data->version != need(rsj, "version", "ruleset").as_string() ||
-        data->content_digest != need(rsj, "content_digest", "ruleset").as_string()) {
+    if (cfg.verify_ruleset && (data->version != need(rsj, "version", "ruleset").as_string() ||
+                               data->content_digest != need(rsj, "content_digest", "ruleset").as_string())) {
         bad("manifest and ruleset metadata disagree about the rule-set version / content digest");
     }
 
@@ -148,7 +148,7 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
         if (hs_valid_platform() != HS_SUCCESS) {
             throw Error(Status::Platform, "this CPU does not provide the instruction set required by Hyperscan (SSSE3)");
         }
-        if (info.hs_version != HsBackend::library_version()) {
+        if (cfg.verify_ruleset && info.hs_version != HsBackend::library_version()) {
             throw Error(Status::Version, "rule set was compiled with Hyperscan '" + info.hs_version +
                                              "' but this engine is linked with '" + HsBackend::library_version() + "'");
         }
@@ -156,7 +156,7 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
         hs_platform_info_t host;
         if (hs_populate_platform(&host) != HS_SUCCESS) throw Error(Status::Platform, "hs_populate_platform failed");
         const Json* cf = tgt.get("cpu_features");
-        if (cf != nullptr && cf->is_string()) {
+        if (cfg.verify_ruleset && cf != nullptr && cf->is_string()) {
             const unsigned long long want = std::stoull(cf->as_string(), nullptr, 16);
             const unsigned long long have = static_cast<unsigned long long>(host.cpu_features);
             if ((want & ~have) != 0ull) {
@@ -182,7 +182,7 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
                 if (pi < 0) bad("database for unknown profile '" + prof + "'");
                 const std::string db_path = resolve_inside(base_dir, need(dj, "path", "database").as_string());
                 const std::string bytes = read_checked(db_path, 1024u << 20);
-                if (sha256_hex(bytes) != need(dj, "sha256", "database").as_string()) {
+                if (cfg.verify_ruleset && sha256_hex(bytes) != need(dj, "sha256", "database").as_string()) {
                     bad("database file " + need(dj, "path", "database").as_string() + " does not match its sha256 in the manifest");
                 }
                 for (const Json& idj : need(dj, "native_ids", "database").items()) {
@@ -235,7 +235,7 @@ std::shared_ptr<LoadedRuleset> load_ruleset(const std::string& manifest_path_in,
         const auto& fails = pb->set().failures();
         std::set<uint32_t> failed_now;
         for (const auto& f : fails) failed_now.insert(data->patterns[static_cast<size_t>(f.first)].id);
-        if (failed_now != failed_ids) {
+        if (cfg.verify_ruleset && failed_now != failed_ids) {
             throw Error(Status::Version, "PCRE2 " + info.pcre2_version + " compiles a different set of patterns than the one the "
                                          "rule set was built with (" + std::to_string(failed_now.size()) + " vs " +
                                          std::to_string(failed_ids.size()) + " failures); recompile the rules on this machine");

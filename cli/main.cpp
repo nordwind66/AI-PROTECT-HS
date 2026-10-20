@@ -112,13 +112,14 @@ std::string status_text(apg_status_t st) {
 }
 
 // ---- config -----------------------------------------------------------------------------------------------
-std::string make_config(const std::string& manifest, const Args& args) {
+std::string make_config(const std::string& manifest, const Args& args, bool verify) {
     const std::string cfg_file = args.get("--config");
     if (cfg_file.empty()) {
         std::string out;
         apg::JsonWriter w(out);
         w.begin_object();
         w.kv_string("manifest_path", manifest);
+        if (verify) w.kv_bool("verify_ruleset", true);
         w.end_object();
         return out;
     }
@@ -136,6 +137,7 @@ std::string make_config(const std::string& manifest, const Args& args) {
         }
     }
     if (!had_manifest) merged.set("manifest_path", apg::Json::make_string(manifest));
+    if (verify) merged.set("verify_ruleset", apg::Json::make_bool(true));
     return apg::json_dump_canonical(merged);
 }
 
@@ -146,12 +148,12 @@ struct Ctx {
     }
 };
 
-int open_context(const Args& args, Ctx* holder) {
+int open_context(const Args& args, Ctx* holder, bool verify = false) {
     const std::string manifest = args.get("--manifest");
     if (manifest.empty()) return fail("--manifest is required");
     std::string cfg;
     try {
-        cfg = make_config(manifest, args);
+        cfg = make_config(manifest, args, verify);
     } catch (const std::exception& e) {
         return fail(e.what());
     }
@@ -248,7 +250,7 @@ int cmd_compile(const Args& args) {
 
 int cmd_verify_or_info(const Args& args, bool info_only) {
     Ctx c;
-    if (const int rc = open_context(args, &c)) return rc;
+    if (const int rc = open_context(args, &c, !info_only)) return rc;
     uint8_t* json = nullptr;
     size_t len = 0;
     const apg_status_t st = apg_get_info(c.ctx, &json, &len);

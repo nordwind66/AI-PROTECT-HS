@@ -19,7 +19,7 @@ x86-64 only（本版不支持 ARM / 32 位 / macOS）。DLL 依赖的 Hyperscan�
 - `apg_abi_version()` 返回 `(major<<16)|(minor<<8)|patch`，是**库构建时**的 ABI。调用方必须检查 `(apg_abi_version() >> 16) == APG_ABI_VERSION_MAJOR`，且库的 minor ≥ 头文件的 `APG_ABI_VERSION_MINOR`。
 - major 变化 = 二进制不兼容；minor 只会**追加**函数；已有函数签名在同一 major 内不会变。
 - JSON 文档有各自独立的 `schema_version`（现为 1），见 `schemas/`。
-- 规则集产物另有版本：manifest 的 `engine.abi_version` 主版本、归一化表版本、Hyperscan 版本、CPU 特性、操作系统/架构——全部在加载时校验，不一致即报错。
+- 规则集产物自带的版本信息（manifest 的 `engine.abi_version`、归一化表版本、Hyperscan 版本串、CPU 特性、OS/架构、各文件 SHA-256）默认**不校验**：引擎只管读取规则、加载规则，Hyperscan 自己会拒绝版本或 CPU 特性不兼容的数据库（`APG_ERR_VERSION` / `APG_ERR_PLATFORM`）。需要完整校验时配置 `verify_ruleset=true`，或运行 `ai-prompt-guard verify`。
 
 ## 3. 函数
 
@@ -44,7 +44,7 @@ apg_status_t apg_reload(apg_context_t *ctx, const char *manifest_path_utf8);
 void         apg_destroy(apg_context_t *ctx);          // NULL 允许
 ```
 
-- `apg_create`：解析并**严格校验**配置（未知键 → `APG_ERR_CONFIG`），加载 manifest、校验每个文件的 SHA-256、平台与 Hyperscan 版本，反序列化数据库，创建首个 scratch，构建不可变的规则快照。**不打开 SQLite，不编译任何正则。** 失败时 `*out_ctx == NULL`。
+- `apg_create`：解析并**严格校验**配置（未知键 → `APG_ERR_CONFIG`），加载 manifest 与各分片，反序列化数据库（默认不做哈希/版本/平台校验，由 Hyperscan 自己拒绝不可用的数据库；`verify_ruleset=true` 时才做完整校验），创建首个 scratch，构建不可变的规则快照。**不打开 SQLite，不编译任何正则。** 失败时 `*out_ctx == NULL`。
 - `apg_reload`：新规则集**完整**加载并校验（包括创建 scratch）之后才原子替换；在途扫描继续用旧规则集；失败时旧规则集原样保留并返回错误码。路径可以是 `manifest.json`，也可以是 `active.json` 指针文件。
 - `apg_destroy`：阻塞到“在它之前已经开始”的扫描/重载结束。调用方必须保证没有线程在它之后（或与它并发地）**开始**新调用——那是对已销毁句柄的使用，任何 C API 都无法防御。
 
@@ -73,7 +73,7 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 | 1 | `APG_ERR_INVALID_ARGUMENT` | 参数无效 | NULL 指针、请求 JSON 非法、未知键、字段类型错误、上下文正在销毁 |
 | 2 | `APG_ERR_CONFIG` | 配置无效 | 配置 JSON 非法/含未知键、`manifest_path` 缺失或文件不存在、阈值越界 |
 | 3 | `APG_ERR_DATABASE` | 规则产物损坏 | manifest/`.hsdb`/元数据缺失、哈希不符、`build_hash` 不符、内部不一致 |
-| 4 | `APG_ERR_VERSION` | 版本不兼容 | Hyperscan 版本与构建时不同、ABI 主版本不同、快照/manifest 格式不支持、PCRE2 无法编译同一组模式 |
+| 4 | `APG_ERR_VERSION` | 版本不兼容 | Hyperscan 反序列化报版本不同；manifest 格式不支持；`verify_ruleset=true` 时还包括 ABI 主版本、归一化表版本、Hyperscan 版本串不同、PCRE2 无法编译同一组模式 |
 | 5 | `APG_ERR_PLATFORM` | 平台不匹配 | 产物为另一个 OS/架构/后端；CPU 缺少构建时使用的指令集；本库未编入 Hyperscan 却要加载 hyperscan 产物 |
 | 6 | `APG_ERR_OOM` | 内存不足 | — |
 | 7 | `APG_ERR_LIMIT` | 超出硬限制（扫描开始之前） | 请求 JSON 超过 `limits.max_request_bytes`、字段/上下文过多 |
@@ -102,6 +102,7 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 ```json
 {
   "manifest_path": "dist/linux/x86_64/active.json",
+  "verify_ruleset": false,
   "limits":  {"max_text_bytes": 1048576, "max_request_bytes": 4194304, "max_hits": 50000, "max_fields": 16,
               "scratch_pool_max": 64, "verify_budget_ms": 200},
   "policy":  {"allow_block": false, "on_error": "review", "on_verify_error": "review", "needs_context_review_at": 0.50,
