@@ -20,6 +20,7 @@
  *   --size BYTES    pad every built-in text to about this many bytes (default 0 = the samples as they are)
  *   --corpus FILE   text file: one text per line, or JSON lines with a "text" field
  *   --source S      user_input | agent_message | tool_output | rag_document (default user_input)
+ *   --no-evidence   run with output.include_evidence_text=false (to measure the cost of the evidence text)
  *
  * What is measured: the wall time of one apg_scan_text() call (the JSON result is produced inside the call). Decision counting
  * and bookkeeping happen outside the timed region. Latency is kept in a log-scale histogram (12.5 % resolution), so
@@ -360,7 +361,7 @@ static long rss_kb(void) {
 static void usage(const char* argv0) {
     fprintf(stderr,
             "usage: %s [manifest.json] [--threads N] [--duration S] [--warmup S] [--mode normal|attack|mixed]\n"
-            "          [--size BYTES] [--corpus FILE] [--source user_input|agent_message|tool_output|rag_document]\n", argv0);
+            "          [--size BYTES] [--corpus FILE] [--source user_input|agent_message|tool_output|rag_document] [--no-evidence]\n", argv0);
 }
 
 static void print_summary(const snap_t* s, double secs, int threads) {
@@ -383,6 +384,7 @@ int main(int argc, char** argv) {
     const char* source = "user_input";
     int threads = 1, duration = 10, warmup = 2, i;
     size_t size = 0;
+    int no_evidence = 0;
     char config[4096];
     textset_t ts = {0};
     apg_context_t* ctx = NULL;
@@ -406,6 +408,7 @@ int main(int argc, char** argv) {
         else if (!strcmp(a, "--size") && v) { size = (size_t)atol(v); ++i; }
         else if (!strcmp(a, "--corpus") && v) { corpus = v; ++i; }
         else if (!strcmp(a, "--source") && v) { source = v; ++i; }
+        else if (!strcmp(a, "--no-evidence")) no_evidence = 1;
         else if (a[0] != '-') manifest = a;
         else { usage(argv[0]); return 2; }
     }
@@ -418,7 +421,8 @@ int main(int argc, char** argv) {
         fprintf(stderr, "unsupported characters in manifest path\n");
         return 2;
     }
-    snprintf(config, sizeof config, "{\"manifest_path\":\"%s\"}", manifest);
+    snprintf(config, sizeof config, "{\"manifest_path\":\"%s\"%s}", manifest,
+             no_evidence ? ",\"output\":{\"include_evidence_text\":false}" : "");
 
     if ((apg_abi_version() >> 16) != APG_ABI_VERSION_MAJOR) {
         fprintf(stderr, "incompatible library ABI 0x%x\n", (unsigned)apg_abi_version());
@@ -433,8 +437,8 @@ int main(int argc, char** argv) {
         size_t tot = 0;
         for (size_t k = 0; k < ts.n; ++k) tot += ts.len[k];
         printf("AI Prompt Guard %s   规则: %s\n", apg_engine_version(), manifest);
-        printf("文本集: %s%s, %zu 条, 平均 %zu 字节   线程: %d   预热 %d s   测量 %d s   来源: %s\n", corpus ? "corpus " : "内置 ",
-               corpus ? corpus : mode, ts.n, tot / ts.n, threads, warmup, duration, source);
+        printf("文本集: %s%s, %zu 条, 平均 %zu 字节   线程: %d   预热 %d s   测量 %d s   来源: %s   举证文本: %s\n", corpus ? "corpus " : "内置 ",
+               corpus ? corpus : mode, ts.n, tot / ts.n, threads, warmup, duration, source, no_evidence ? "关" : "开");
     }
 
     load_t0 = now_ns();
