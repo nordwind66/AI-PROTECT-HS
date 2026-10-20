@@ -1,12 +1,16 @@
 {
   "version": 3,
-  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "linux-release",
-      "displayName": "Linux x86-64, Release (Hyperscan + PCRE2 + SQLite from the system)",
-      "description": "Needs libhyperscan-dev, libpcre2-dev, libsqlite3-dev (see scripts/linux/setup_deps.sh). Nothing is installed by the build.",
-      "binaryDir": "${sourceDir}/build/linux",
+      "displayName": "Linux x86-64, Release (system Hyperscan + PCRE2; the self-contained build is scripts/build.sh)",
+      "description": "Needs libhyperscan-dev and libpcre2-dev. Nothing is installed by the build.",
+      "binaryDir": "${sourceDir}/build-system",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "APG_WITH_HYPERSCAN": "ON"
@@ -15,7 +19,7 @@
     {
       "name": "linux-debug-asan",
       "displayName": "Linux, Debug + AddressSanitizer/UBSan",
-      "binaryDir": "${sourceDir}/build/linux-asan",
+      "binaryDir": "${sourceDir}/build-asan",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
@@ -25,7 +29,7 @@
     {
       "name": "linux-pcre2-fallback",
       "displayName": "Linux, without Hyperscan (explicit pcre2_fallback backend only)",
-      "binaryDir": "${sourceDir}/build/linux-fallback",
+      "binaryDir": "${sourceDir}/build-fallback",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "APG_WITH_HYPERSCAN": "OFF"
@@ -36,7 +40,10 @@
       "displayName": "Windows x64, Visual Studio 2022 (dependencies via -DCMAKE_PREFIX_PATH or vcpkg toolchain)",
       "description": "Dependencies are located through CMAKE_PREFIX_PATH / HYPERSCAN_ROOT / PCRE2_ROOT; no drive letter is assumed. See docs/windows-build.md.",
       "generator": "Visual Studio 17 2022",
-      "architecture": { "value": "x64", "strategy": "set" },
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
       "binaryDir": "${sourceDir}/build/windows",
       "cacheVariables": {
         "APG_WITH_HYPERSCAN": "ON"
@@ -46,7 +53,10 @@
       "name": "windows-msvc-fallback",
       "displayName": "Windows x64, Visual Studio 2022, pcre2_fallback backend only (no Hyperscan)",
       "generator": "Visual Studio 17 2022",
-      "architecture": { "value": "x64", "strategy": "set" },
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
       "binaryDir": "${sourceDir}/build/windows-fallback",
       "cacheVariables": {
         "APG_WITH_HYPERSCAN": "OFF"
@@ -54,17 +64,66 @@
     }
   ],
   "buildPresets": [
-    { "name": "linux-release", "configurePreset": "linux-release" },
-    { "name": "linux-debug-asan", "configurePreset": "linux-debug-asan" },
-    { "name": "linux-pcre2-fallback", "configurePreset": "linux-pcre2-fallback" },
-    { "name": "windows-msvc", "configurePreset": "windows-msvc", "configuration": "Release" },
-    { "name": "windows-msvc-fallback", "configurePreset": "windows-msvc-fallback", "configuration": "Release" }
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-debug-asan",
+      "configurePreset": "linux-debug-asan"
+    },
+    {
+      "name": "linux-pcre2-fallback",
+      "configurePreset": "linux-pcre2-fallback"
+    },
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-fallback",
+      "configurePreset": "windows-msvc-fallback",
+      "configuration": "Release"
+    }
   ],
   "testPresets": [
-    { "name": "linux-release", "configurePreset": "linux-release", "output": { "outputOnFailure": true } },
-    { "name": "linux-debug-asan", "configurePreset": "linux-debug-asan", "output": { "outputOnFailure": true } },
-    { "name": "linux-pcre2-fallback", "configurePreset": "linux-pcre2-fallback", "output": { "outputOnFailure": true } },
-    { "name": "windows-msvc", "configurePreset": "windows-msvc", "configuration": "Release", "output": { "outputOnFailure": true } },
-    { "name": "windows-msvc-fallback", "configurePreset": "windows-msvc-fallback", "configuration": "Release", "output": { "outputOnFailure": true } }
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-debug-asan",
+      "configurePreset": "linux-debug-asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-pcre2-fallback",
+      "configurePreset": "linux-pcre2-fallback",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-msvc-fallback",
+      "configurePreset": "windows-msvc-fallback",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }

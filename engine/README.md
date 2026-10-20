@@ -11,13 +11,14 @@
 ## 构建与测试
 
 ```bash
-bash scripts/linux/setup_deps.sh                                  # 只检查，不安装（--install 才安装）
-bash scripts/linux/build.sh                                       # → build/linux/bin/{libai_prompt_guard.so, ai-prompt-guard, apg_tests, example_*}
-bash scripts/linux/build.sh --static --hyperscan-root /opt/hs-static --build-dir build/linux-static   # 自包含 .so，目标机只需要 glibc
-bash scripts/linux/test.sh --build-dir build/linux                # C++ 单元测试
+bash scripts/setup.sh              # 一次性：检查工具，编译静态（-fPIC）Hyperscan 5.4.2 到 .deps/hyperscan（--install 先装缺的系统包，--check 只检查）
+bash scripts/build.sh              # 默认就是交付形态：Hyperscan、PCRE2、libstdc++ 静态链进 libai_prompt_guard.so，目标机只需要 glibc → build/
+bash scripts/test.sh               # C++ 单元测试 + Schema 与静态检查（不需要规则库）
+bash scripts/package.sh            # 引擎包 → dist/ai-prompt-guard-engine-<版本>-linux-x86_64.tar.gz（含 check.sh）
+bash scripts/bench.sh --manifest <规则包>/active.json     # 基准（显式运行，需要自己指定规则包）
 ```
 
-静态 Hyperscan（带 `-fPIC`）用 `scripts/linux/build_hyperscan_static.sh` 一次性编译。没有 Hyperscan：`build.sh --no-hyperscan` 构建显式的 `pcre2_fallback` 后端。Windows 见 `docs/windows-build.md`。
+`build.sh` 的变体：`--system-libs`（动态链接系统的 libhyperscan-dev / libpcre2-dev，输出 `build-system/`）、`--no-hyperscan`（只有显式的 `pcre2_fallback` 后端，不需要 Hyperscan，`build-fallback/`）、`--asan`（Debug + ASan/UBSan，`build-asan/`）；`--hs DIR`、`--out DIR`、`--jobs N`、`--clean`。Windows：`scripts/build.ps1`、`scripts/test.ps1`，见 `docs/windows-build.md`。
 
 ## 命令行
 
@@ -50,7 +51,7 @@ apg_destroy(ctx);
 include/ai_prompt_guard.h   唯一的公共 C ABI        src/{core,ruleset,api}/   引擎源码（ruleset/compiler.cpp 是规则编译器）
 cli/                        ai-prompt-guard         examples/                  C · C++ · dlopen · LoadLibrary · Python · Go · Rust · scan_loop · bench_live
 schemas/                    配置/请求/响应/manifest/… 的 JSON Schema        tests/    cpp/（单元测试）· python/（Schema 与静态检查）· corpus/（基准用语料）
-scripts/{linux,windows}/    构建 · 测试 · 基准（显式）· 打包
+scripts/                    setup · build · test · bench · package（.sh）· build/test（.ps1）
 ```
 
 | 文档 | 内容 |

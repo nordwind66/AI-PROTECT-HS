@@ -28,7 +28,7 @@ flowchart LR
 | `third_party/` | 三个上游仓库的干净快照与 commit 锁 |
 | `schemas/` | 规则规格、快照、活动指针的 JSON Schema |
 | `tests/` | Python 单元测试、`corpus/`（语料与预期结果）、`e2e/`（用真实引擎做端到端与差分）、`fixtures/` |
-| `scripts/linux/` | `init_rules.sh`（导出快照→编译→登记→激活）、`package_rules.sh`（打包规则包） |
+| `scripts/` | `release.sh`（一条命令到规则包）· `compile.sh`（导出快照→编译→登记→激活）· `package.sh` · `test.sh` · `rebuild_db.sh` |
 | `reports/`、`LICENSES/` | 统计与评估报告 · 上游许可证与署名 |
 
 ## 2. 数据流

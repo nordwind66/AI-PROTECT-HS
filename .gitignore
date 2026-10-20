@@ -45,3 +45,6 @@ Makefile
 cmake_install.cmake
 CTestTestfile.cmake
 Testing/
+
+# build prerequisites made by engine/scripts/setup.sh (static Hyperscan and its sources)
+.deps/

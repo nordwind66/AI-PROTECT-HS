@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """End-to-end acceptance tests of the COMPILED engine (standard library only).
 
-    python tests/e2e/run_e2e.py --cli build/linux/ai-prompt-guard --workdir build/linux/e2e
-    python tests/e2e/run_e2e.py --cli build/linux/ai-prompt-guard --backend both --lib build/linux/libai_prompt_guard.so \
-                                --examples-dir build/linux/examples
+    python tests/e2e/run_e2e.py --cli ../engine/build/bin/ai-prompt-guard --workdir /tmp/e2e
+    python tests/e2e/run_e2e.py --cli ../engine/build/bin/ai-prompt-guard --backend both --lib ../engine/build/bin/libai_prompt_guard.so \
+                                --examples-dir ../engine/build/bin
 
 What it proves (when the C++ tool exists and passes):
   1. compile      published SQLite snapshot -> Hyperscan databases + manifest + build report; manifest and report satisfy

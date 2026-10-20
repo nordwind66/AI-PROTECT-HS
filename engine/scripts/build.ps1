@@ -21,11 +21,11 @@
 .PARAMETER CheckOnly       Only report which tools / libraries were found
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File scripts\windows\build.ps1 -CheckOnly
+  powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -CheckOnly
 .EXAMPLE
-  powershell -File scripts\windows\build.ps1 -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
+  powershell -File scripts\build.ps1 -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
 .EXAMPLE
-  powershell -File scripts\windows\build.ps1 -NoHyperscan -Pcre2Root D:\libs\pcre2
+  powershell -File scripts\build.ps1 -NoHyperscan -Pcre2Root D:\libs\pcre2
 #>
 [CmdletBinding()]
 param(
@@ -41,7 +41,7 @@ param(
   [switch]$CheckOnly
 )
 $ErrorActionPreference = "Stop"
-$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if (-not $BuildDir) { $BuildDir = if ($NoHyperscan) { "build\windows-fallback" } else { "build\windows" } }
 if (-not [System.IO.Path]::IsPathRooted($BuildDir)) { $BuildDir = Join-Path $Root $BuildDir }
 
@@ -114,4 +114,4 @@ Write-Host ""
 Write-Host "Built into $out" -ForegroundColor Green
 Get-ChildItem $out -Include "ai_prompt_guard.*", "ai-prompt-guard.exe", "apg_tests.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name)" }
 Write-Host "Dependent DLLs (Hyperscan, PCRE2, VC runtime) must be next to ai_prompt_guard.dll or on the DLL search path of the process."
-Write-Host "Next: scripts\windows\test.ps1"
+Write-Host "Next: scripts\test.ps1"

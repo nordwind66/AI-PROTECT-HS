@@ -44,13 +44,13 @@ D:\tools\vcpkg\vcpkg install hyperscan:x64-windows                              
 
 ```powershell
 # 只检查，不构建、不安装：
-powershell -ExecutionPolicy Bypass -File scripts\windows\build.ps1 -CheckOnly -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
+powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -CheckOnly -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
 
 # 带 Hyperscan（若依赖就绪）：
-powershell -File scripts\windows\build.ps1 -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
+powershell -File scripts\build.ps1 -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
 
 # 保底：显式 pcre2_fallback 后端
-powershell -File scripts\windows\build.ps1 -NoHyperscan -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
+powershell -File scripts\build.ps1 -NoHyperscan -VcpkgToolchain D:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake
 
 # 自己的前缀目录：-HyperscanRoot D:\libs\hyperscan -Pcre2Root D:\libs\pcre2
 ```
@@ -64,7 +64,7 @@ MSVC 选项：`/utf-8 /W4 /permissive- /EHsc`；默认 `/MD`（DLL 运行时）�
 ## 4. 测试
 
 ```powershell
-powershell -File scripts\windows\test.ps1 -BuildDir build\windows-fallback
+powershell -File scripts\test.ps1 -BuildDir build\windows-fallback
 ```
 
 运行 C++ 单元测试（含 C ABI 与并发热更新）。用真实规则包做端到端与差分测试由规则库项目的 `tests/e2e` 负责（需要 Python 与该项目）。

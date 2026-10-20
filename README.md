@@ -26,9 +26,10 @@ rules.py export-snapshot            ai-prompt-guard compile --snapshot
 
 ```bash
 cd engine
-bash scripts/linux/build.sh --static --hyperscan-root <静态 Hyperscan 前缀> --build-dir build/linux-static
-bash scripts/linux/test.sh --build-dir build/linux-static      # 引擎自己的测试，不需要规则库
-bash scripts/linux/package.sh                                   # 引擎包：lib + include + bin + examples
+bash scripts/setup.sh                # 一次性：检查工具，编译静态 Hyperscan 到 .deps/（--install 先装系统包）
+bash scripts/build.sh                # 自包含的 libai_prompt_guard.so + ai-prompt-guard → build/
+bash scripts/test.sh                 # 引擎自己的测试，不需要规则库
+bash scripts/package.sh              # 引擎包：lib + include + bin + examples → dist/
 ```
 
 已有的规则包不用重编，换上新的 `.so` 即可（Hyperscan 版本没变时）。
@@ -37,9 +38,8 @@ bash scripts/linux/package.sh                                   # 引擎包：li
 
 ```bash
 cd rules
-python tools/update_rules.py --dry-run                          # 改 data/manual_rules/*.json 后先看会改什么
-python tools/update_rules.py --compile --cli <引擎>/build/linux-static/bin/ai-prompt-guard
-bash scripts/linux/package_rules.sh                             # 规则包：<版本>/ + active.json
+bash scripts/release.sh --dry-run                               # 改 data/manual_rules/*.json 后先看会改什么
+bash scripts/release.sh --cli <引擎>/build/bin/ai-prompt-guard  # 同步 → 测试 → 发布新版本 → 编译 → 登记激活 → 打包
 ```
 
 宿主程序里 `apg_reload(ctx, "<规则包>/active.json")` 热更新，不用重启，也不用重新编译引擎。

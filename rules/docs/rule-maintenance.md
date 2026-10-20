@@ -15,7 +15,8 @@
 ```bash
 python tools/update_rules.py --dry-run     # 先看会新增/修改哪些规则，不写任何东西
 python tools/update_rules.py               # 同步 → 规则测试 → 严格校验 → 发布下一个补丁版本(如 1.1.0 → 1.1.1) → 刷新语料期望值 → 校验和
-python tools/update_rules.py --compile --cli /path/to/ai-prompt-guard   # 同上，再导出快照、用引擎的编译器编译、登记、激活（等价于随后跑 scripts/linux/init_rules.sh）
+python tools/update_rules.py --compile --cli /path/to/ai-prompt-guard   # 同上，再导出快照、用引擎的编译器编译、登记、激活（等价于随后跑 scripts/compile.sh）
+bash scripts/release.sh --cli /path/to/ai-prompt-guard                  # 以上全部 + 打包，一条命令
 ```
 
 选项：`--version 1.2.0` 指定版本；`--prune` 同时删除 JSON 里已经没有的手工规则；`--file a.json b.json` 只用指定文件（此时不要配 `--prune`）；`--no-eval` 不刷新 `tests/corpus/expected/*`。文件内容与上一个版本完全一致时什么都不发布。已发布的版本永远不变，要回退用 `rules.py rollback`。
@@ -171,7 +172,7 @@ python tools/rules.py export-snapshot --version 1.1.0 --out /tmp/snap.json    # 
 ai-prompt-guard compile --snapshot /tmp/snap.json --out dist --backend hyperscan --cpu-target generic
 python tools/rules.py register-artifact --manifest dist/linux/x86_64/1.1.0/manifest.json
 python tools/rules.py activate --version 1.1.0 --reason "release" --pointer-dir dist/linux/x86_64
-bash scripts/linux/package_rules.sh                          # 打成规则包 dist/package/ai-prompt-guard-rules-1.1.0-linux-x86_64.tar.gz
+bash scripts/package.sh                                      # 打成规则包 dist/package/ai-prompt-guard-rules-1.1.0-linux-x86_64.tar.gz
 # 运行进程里：apg_reload(ctx, "dist/linux/x86_64/active.json")   → 原子切换；失败则旧规则集继续服务
 
 python tools/rules.py rollback --to 1.0.0 --reason "误报回归" --pointer-dir dist/linux/x86_64   # 只移动指针，写审计
@@ -179,7 +180,7 @@ python tools/rules.py rollback --to 1.0.0 --reason "误报回归" --pointer-dir 
 
 - `compile` 在**临时目录**里构建并做加载自检，通过后才原子改名；已存在的输出目录需要 `--force`。
 - **并行与耗时**：Hyperscan 编译是整个构建里最慢的一步，`compile` 默认用本机所有 CPU 线程（最多 16 个），并每几秒在 stderr 打印进度（已完成多少条、当前最慢的是哪条、已用时间）。流程分两段：① 每条正则**单独并行**编译，每次尝试有时限；被拒绝或超时的依次降级为预过滤、再放宽大范围重复，仍失败才隔离，**不会因为一条失败而整体重编**；② 通过的模式按编译耗时均衡分成若干分片，每片一次 `hs_compile_multi`，各片并行编译，产物为 `rules.<profile>.01.hsdb`、`rules.<profile>.02.hsdb` …（只有一片时仍叫 `rules.<profile>.hsdb`）。运行时依次扫描同一 profile 的所有分片并合并命中。
-- 选项（均可省略）：`--jobs N` 工作线程数（`1` = 严格串行）；`--shards N` 每个 profile 的分片数；`--native-timeout SEC` 仍有“放宽形式”可以兜底的尝试的时限（默认 15 秒：原生编译超过它的模式本来就更适合走预过滤——库更小、构建更快）；`--pattern-timeout SEC` 最后一次机会的时限，超过则隔离该模式（默认 60 秒）；`--shard-timeout SEC` 单个分片的时限（默认 1800 秒，超时则对半拆分重试）；`--relax-repeat N` 把大于 N 的计数重复 `{m,n}` 放宽成 `{m,}`（超集，PCRE2 逐个复核；默认 32，`0` = 关闭）：Hyperscan 在 UTF-8 模式下无法原生编译带大范围重复的模式（报 “Pattern is too large”，而且要很久才报），所以含大于 2N 的重复的模式**直接**用放宽后的预过滤形式编译，其余模式在原生、预过滤都失败后才把它作为最后一招。`scripts/linux/init_rules.sh`（导出快照 → 编译 → 登记 → 激活，一条命令）会把这些选项原样转给 `compile`。
+- 选项（均可省略）：`--jobs N` 工作线程数（`1` = 严格串行）；`--shards N` 每个 profile 的分片数；`--native-timeout SEC` 仍有“放宽形式”可以兜底的尝试的时限（默认 15 秒：原生编译超过它的模式本来就更适合走预过滤——库更小、构建更快）；`--pattern-timeout SEC` 最后一次机会的时限，超过则隔离该模式（默认 60 秒）；`--shard-timeout SEC` 单个分片的时限（默认 1800 秒，超时则对半拆分重试）；`--relax-repeat N` 把大于 N 的计数重复 `{m,n}` 放宽成 `{m,}`（超集，PCRE2 逐个复核；默认 32，`0` = 关闭）：Hyperscan 在 UTF-8 模式下无法原生编译带大范围重复的模式（报 “Pattern is too large”，而且要很久才报），所以含大于 2N 的重复的模式**直接**用放宽后的预过滤形式编译，其余模式在原生、预过滤都失败后才把它作为最后一招。`scripts/compile.sh`（导出快照 → 编译 → 登记 → 激活，一条命令）会把这些选项原样转给 `compile`。
 - 假设与风险（**未经实测**）：并行编译假定 Hyperscan 的 `hs_compile*` 可被多个线程同时调用（它没有共享的可变状态；若你的版本不是这样，用 `--jobs 1`）；每个并发编译都要占内存，内存紧张时调小 `--jobs`；Hyperscan 无法中断一次编译，超时的线程会被放弃（继续占用 CPU 直到它自己返回或进程退出），数量超过上限时 `compile` 会明确报错而不是悬挂。
 - `--strict`：只要有模式被隔离就失败。默认会隔离并在 `build_report.json` 列出（错误原文、使用它的规则 ID、上游溯源），`manifest.status = partial`。
 - `.hsdb` 由编译它的那一版 Hyperscan 加载，不可跨 OS 使用；Hyperscan 会拒绝不兼容的数据库。部署的引擎换了 Hyperscan 版本时，用新引擎的 `ai-prompt-guard` 把同一份已发布快照重新编译即可，规则本身不用改。

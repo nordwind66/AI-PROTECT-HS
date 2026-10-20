@@ -11,22 +11,29 @@
 ## 日常更新
 
 ```bash
-python tools/update_rules.py --dry-run                      # 改 data/manual_rules/*.json 后先看会改什么
-python tools/update_rules.py --compile --cli /path/to/ai-prompt-guard
-#   同步 → 规则自带样例 → 严格校验 → 发布下一个补丁版本 → 刷新语料期望值 → 导出快照 → 编译 → 登记 → 激活
-bash scripts/linux/package_rules.sh                          # 规则包：<版本>/ + active.json
+bash scripts/release.sh --dry-run                            # 改 data/manual_rules/*.json 后先看会改什么
+bash scripts/release.sh --cli /path/to/ai-prompt-guard       # 一条命令：同步 → 规则样例 → 严格校验 → 发布下一个补丁版本 → 编译 → 登记激活 → 打包
 ```
 
-规则名是主键（新名字=新规则，同名有变化=新修订）；详见 `docs/rule-maintenance.md`。
+规则名是主键（新名字=新规则，同名有变化=新修订）；没有变化时什么都不发布、不编译。分步命令：`tools/update_rules.py`（发布）、`scripts/compile.sh`（编译）、`scripts/package.sh`（打包）；详见 `docs/rule-maintenance.md`。
 
 ## 测试
 
 ```bash
-python3 -X utf8 -m unittest discover -s tests/python         # 工具链单元测试（参考引擎、导入器、数据库、规则样例、语料预期）
-python3 -X utf8 tests/e2e/run_e2e.py --cli <引擎>/ai-prompt-guard --workdir /tmp/e2e --db /tmp/rules.db --backend hyperscan \
-    --lib <引擎>/libai_prompt_guard.so --examples-dir <引擎>/bin --clean      # 用真实引擎：编译→差分→篡改→发布流程→示例
-python3 tools/diff_hyperscan.py --lib <引擎>/libai_prompt_guard.so --manifest dist/linux/x86_64/<版本>/manifest.json --version <版本>
+bash scripts/test.sh                                         # 工具链单元测试（参考引擎、导入器、数据库、规则样例、语料预期）
+bash scripts/test.sh --engine <引擎>/build --backend hyperscan    # 再加：用真实引擎做端到端与差分（在临时数据库副本上）
+python3 tools/diff_hyperscan.py --lib <引擎>/build/bin/libai_prompt_guard.so --manifest dist/linux/x86_64/<版本>/manifest.json --version <版本>
 ```
+
+## 脚本
+
+| 脚本 | 作用 |
+|---|---|
+| `scripts/release.sh` | 规则变了：一条命令到规则包 |
+| `scripts/compile.sh` | 已发布版本 → 导出快照 → 引擎编译器 → 登记 → 激活（写 `active.json`） |
+| `scripts/package.sh` | 规则包 `.tar.gz`（`<版本>/` + `active.json`） |
+| `scripts/test.sh` | 测试 |
+| `scripts/rebuild_db.sh` | 从锁定的上游 commit 从零重建规则库（很少用） |
 
 ## 目录与文档
 
@@ -34,7 +41,7 @@ python3 tools/diff_hyperscan.py --lib <引擎>/libai_prompt_guard.so --manifest 
 data/      权威规则库 · manual_rules/*.json（手工规则）      sql/       SQLite schema（含不可变性触发器、视图）
 tools/     rules.py · apg_rules/ · sources/ · update_rules.py · build_rules_db.py · diff_hyperscan.py · gen_unicode_tables.py
 third_party/  三个上游仓库的干净快照与 commit 锁              schemas/   规则规格、快照、活动指针的 JSON Schema
-tests/     python/ · corpus/（语料与预期结果）· e2e/ · fixtures/   scripts/linux/  init_rules.sh · package_rules.sh
+tests/     python/ · corpus/（语料与预期结果）· e2e/ · fixtures/   scripts/  release · compile · package · test · rebuild_db
 reports/   覆盖、清点、误报/检出评估、转换对应表、PROGRESS.md      LICENSES/  上游许可证与署名
 ```
 

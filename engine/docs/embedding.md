@@ -11,20 +11,20 @@
 
 ```bash
 # 1) 一次性：编译带 -fPIC 的静态 Hyperscan（发行版自带的 libhs.a 不是 PIC，链不进 .so）
-bash scripts/linux/build_hyperscan_static.sh --prefix /opt/hs-static          # 几分钟；需要访问 github.com 和 sourceforge.net
+bash scripts/setup.sh                                                        # 几分钟；需要访问 github.com 和 sourceforge.net；产物在 .deps/hyperscan
 # 2) 把 Hyperscan、PCRE2、libstdc++、libgcc 静态链接进 .so
-bash scripts/linux/build.sh --static --hyperscan-root /opt/hs-static        # 末尾会打印 ldd：只应剩 libc / libm
+bash scripts/build.sh                                                        # 默认自包含；末尾会打印 ldd：只应剩 libc / libm
 # 3) 打包引擎
-bash scripts/linux/package.sh                                                # -> dist/package/ai-prompt-guard-engine-<版本>-linux-x86_64.tar.gz
+bash scripts/package.sh                                                      # -> dist/ai-prompt-guard-engine-<版本>-linux-x86_64.tar.gz
 ```
 
-规则包由规则库项目产出：在 `../rules` 里用上面构建出的 `bin/ai-prompt-guard` 编译（`scripts/linux/init_rules.sh --cli <path>/ai-prompt-guard`），再 `scripts/linux/package_rules.sh` 打成规则包。引擎包和规则包各自复制到目标机器，互不要求对方的版本。
+规则包由规则库项目产出：在 `../rules` 里用上面构建出的 `build/bin/ai-prompt-guard` 编译（`scripts/release.sh --cli <path>/ai-prompt-guard`，内含编译与打包）。引擎包和规则包各自复制到目标机器，互不要求对方的版本。
 
 目标机器：`tar xzf` 两个包，`bash ai-prompt-guard-engine-*/check.sh <规则包>/active.json`（verify + 几条扫描），然后让你的程序 `dlopen`/链接 `lib/libai_prompt_guard.so`，配置 `{"manifest_path":"<规则包>/active.json"}`。
 
 - `.so` 只导出 11 个 `apg_*` 符号（version script），静态进来的 Hyperscan/PCRE2/C++ 运行库符号全部隐藏，不会和宿主程序里的同名库冲突；宿主自带旧 libstdc++ 的问题（见 §1）也不再出现。
 - 目标机器只需要 glibc（`ldd` 只有 `libc`/`libm`，glibc 版本不能比编译机旧太多，想要更广的兼容就在较旧的发行版上编译）。随包的 `bin/ai-prompt-guard` 同样只依赖 glibc。
-- 规则（`.hsdb`）绑定编译时的 Hyperscan 版本和 CPU 特性。规则库项目的 `init_rules.sh` 默认 `--cpu-target generic`，静态库按 `nehalem`（SSE4.2）基线编译（`--arch haswell` 更快但要求 AVX2），所以在任何 2009 年以后的 x86-64 CPU 上都能加载；加载时不做版本/哈希校验，Hyperscan 自己会拒绝版本或 CPU 特性不兼容的数据库（不会误用）；要在部署前做完整校验，用目标机上的 `check.sh`（`verify`）。
+- 规则（`.hsdb`）绑定编译时的 Hyperscan 版本和 CPU 特性。规则库项目的 `scripts/compile.sh` 默认 `--cpu-target generic`，静态库按 `nehalem`（SSE4.2）基线编译（`--arch haswell` 更快但要求 AVX2），所以在任何 2009 年以后的 x86-64 CPU 上都能加载；加载时不做版本/哈希校验，Hyperscan 自己会拒绝版本或 CPU 特性不兼容的数据库（不会误用）；要在部署前做完整校验，用目标机上的 `check.sh`（`verify`）。
 - 规则包不小（1.1.0 约 85 MB，压缩后 17 MB）。运行时**不需要** SQLite 和 Python。
 
 ## 1. 部署布局
@@ -114,8 +114,8 @@ FreeLibrary(lib);                                                       // 在�
 ### Linux：方式一 —— 链接 `-lai_prompt_guard`
 
 ```bash
-cc scan.c -I include -L build/linux/bin -lai_prompt_guard -o scan
-LD_LIBRARY_PATH=build/linux/bin ./scan dist/linux/x86_64/active.json "ignore all previous instructions"
+cc scan.c -I include -L build/bin -lai_prompt_guard -o scan
+LD_LIBRARY_PATH=build/bin ./scan dist/linux/x86_64/active.json "ignore all previous instructions"
 # 部署时更好的做法：链接时加 -Wl,-rpath,'$ORIGIN/../lib'，或把库安装到系统库目录并 ldconfig
 ```
 
@@ -143,7 +143,7 @@ dlclose(lib);                       // 在所有 context 销毁、所有缓冲�
 
 ## 5. 容量与性能
 
-本仓库**不含任何性能数字**（任务书禁止在本机做性能测试，也不允许捏造跑分）。设计上的性能特征：请求路径不访问 SQLite、不动态编译、不逐条规则扫描（每个 profile×视图一次批量扫描）、Hyperscan/PCRE2 的 scratch 与 match data 池化复用（不是每次扫描分配）、ASCII 文本的 `fold_v1` 视图与原文相同时不拷贝。每次调用仍会分配结果字符串和若干小向量（未做内存池优化）。实测计划见 `reports/performance.md`，执行入口 `scripts/linux/bench.sh --run`。
+本项目**不随附性能数字**：性能与机器强相关，用 `scripts/bench.sh`（官方基准）和 `examples/c/bench_live.c`（逐秒输出）在目标硬件上自己测。设计上的性能特征：请求路径不访问 SQLite、不动态编译、不逐条规则扫描（每个 profile×视图一次批量扫描）、Hyperscan/PCRE2 的 scratch 与 match data 池化复用（不是每次扫描分配）、ASCII 文本的 `fold_v1` 视图与原文相同时不拷贝。每次调用仍会分配结果字符串和若干小向量（未做内存池优化）。实测计划见 `reports/performance.md`，执行入口 `scripts/linux/bench.sh --run`。
 
 ## 6. 与现有系统集成时的几点提醒
 

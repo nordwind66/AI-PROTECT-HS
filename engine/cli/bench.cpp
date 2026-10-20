@@ -1,6 +1,6 @@
 // `ai-prompt-guard bench` -- explicit micro-benchmark of the public C ABI.
 //
-// It is NEVER started by the build, by the installer or by the test scripts; scripts/linux/bench.sh runs it
+// It is NEVER started by the build, by the installer or by the test scripts; scripts/bench.sh runs it
 // only when a person asks for it. Numbers produced here are measured on the machine that runs the command and
 // are not stored anywhere in this repository.
 #include <algorithm>

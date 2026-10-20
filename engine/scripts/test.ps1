@@ -7,7 +7,7 @@
   the rules project (rules/tests) with the engine you built.
 
 .EXAMPLE
-  powershell -File scripts\windows\test.ps1 -BuildDir build\windows-fallback
+  powershell -File scripts\test.ps1 -BuildDir build\windows-fallback
 #>
 [CmdletBinding()]
 param(
@@ -15,10 +15,10 @@ param(
   [ValidateSet("Release", "Debug")][string]$Config = "Release"
 )
 $ErrorActionPreference = "Continue"
-$Root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if (-not [System.IO.Path]::IsPathRooted($BuildDir)) { $BuildDir = Join-Path $Root $BuildDir }
 $tests = Join-Path (Join-Path $BuildDir ("bin\" + $Config)) "apg_tests.exe"
-if (-not (Test-Path $tests)) { throw "$tests not found: run scripts\windows\build.ps1 first" }
+if (-not (Test-Path $tests)) { throw "$tests not found: run scripts\build.ps1 first" }
 Write-Host "== C++ unit tests (apg_tests.exe)"
 Push-Location $Root
 & $tests

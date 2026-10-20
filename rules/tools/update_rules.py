@@ -24,7 +24,7 @@ Steps (every one is an ordinary `tools/rules.py` command):
     4  publish            new immutable rule-set version (the previous versions stay and can be rolled back to)
     5  eval --write-expected   refreshes tests/corpus/expected/* for the new version (the C++ differential test needs it)
     6  db check + sha256  integrity, audit chain, data/ai_prompt_rules.db.sha256
-    7  --compile          scripts/linux/init_rules.sh: export the snapshot, compile it with the engine's ai-prompt-guard (--cli), register, activate dist/.../active.json
+    7  --compile          scripts/compile.sh: export the snapshot, compile it with the engine's ai-prompt-guard (--cli), register, activate dist/.../active.json
 
 Nothing is published when the files describe exactly what the last version contains.
 """
@@ -95,7 +95,7 @@ def main() -> int:
     ap.add_argument("--prune", action="store_true", help="delete manual rules that are in none of the files")
     ap.add_argument("--dry-run", action="store_true", help="only report what would change")
     ap.add_argument("--no-eval", action="store_true", help="do not refresh tests/corpus/expected/*")
-    ap.add_argument("--compile", action="store_true", help="afterwards run scripts/linux/init_rules.sh (compile, register, activate)")
+    ap.add_argument("--compile", action="store_true", help="afterwards run scripts/compile.sh (compile, register, activate)")
     ap.add_argument("--backend", default="hyperscan", choices=["hyperscan", "pcre2_fallback"], help="with --compile")
     ap.add_argument("--cli", default=os.environ.get("APG_CLI", ""), help="with --compile: the engine's ai-prompt-guard (its `compile` command builds the package); default: $APG_CLI")
     ap.add_argument("--actor", default="update_rules")
@@ -143,7 +143,7 @@ def main() -> int:
     print(f"\nrule set {version} is published in {db}")
     if args.compile:
         step("compile + register + activate on this machine")
-        script = root / "scripts" / "linux" / "init_rules.sh"
+        script = root / "scripts" / "compile.sh"
         if not args.cli:
             print("--compile needs the engine's ai-prompt-guard: pass --cli PATH or set APG_CLI")
             return 1
@@ -152,7 +152,7 @@ def main() -> int:
         if subprocess.call(cmd) != 0:
             return 1
     else:
-        print("next: bash scripts/linux/init_rules.sh   (compile for this machine, register and activate), "
+        print("next: bash scripts/compile.sh --cli <engine>/bin/ai-prompt-guard   (compile, register and activate), "
               "or re-run with --compile")
     return 0
 

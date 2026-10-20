@@ -30,7 +30,7 @@ class DeliveredDatabaseTests(unittest.TestCase):
             conn.close()
 
     def test_checksum_file_matches(self):
-        # The checksum is the fingerprint of the database AS DELIVERED. Using it (scripts/linux/init_rules.sh registers the
+        # The checksum is the fingerprint of the database AS DELIVERED. Using it (scripts/compile.sh registers the
         # compiled artifact and activates the version in the file) legitimately changes the bytes.
         used = self.conn.execute("SELECT (SELECT COUNT(*) FROM compiled_artifacts) + (SELECT COUNT(*) FROM active_ruleset)").fetchone()[0]
         if used:
