@@ -82,6 +82,15 @@ std::string Engine::scan_text(const uint8_t* utf8, size_t len, const char* sourc
     return run_scan(*rs, cfg_, in, lease.get(), verdict);
 }
 
+void Engine::match_text(const uint8_t* utf8, size_t len, const char* source, double min_risk, MatchOut* out) {
+    Inflight guard(*this);
+    if (utf8 == nullptr && len != 0) throw Error(Status::InvalidArgument, "utf8 is NULL but utf8_len is not 0");
+    if (source != nullptr && source[0] != '\0' && !valid_name(source, 64)) throw Error(Status::InvalidArgument, "source must match [A-Za-z0-9_.-]{1,64}");
+    std::shared_ptr<const LoadedRuleset> rs = current();
+    LoadedRuleset::Lease lease = rs->lease();
+    run_first_match(*rs, cfg_, reinterpret_cast<const char*>(utf8), len, source, min_risk, lease.get(), out);
+}
+
 std::string Engine::scan_json(const uint8_t* json, size_t len) {
     Inflight guard(*this);
     if (json == nullptr || len == 0) throw Error(Status::InvalidArgument, "request_json is empty");

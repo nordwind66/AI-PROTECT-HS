@@ -223,6 +223,15 @@ APG_API apg_status_t APG_CALL apg_scan_text_hits(apg_context_t* ctx, const uint8
     });
 }
 
+APG_API apg_status_t APG_CALL apg_match_text(apg_context_t* ctx, const uint8_t* utf8, size_t utf8_len, const char* source,
+                                             double min_risk, apg_match_t* out) {
+    if (out == nullptr) return invalid("out is NULL");
+    std::memset(out, 0, sizeof *out);
+    if (ctx == nullptr) return invalid("ctx is NULL");
+    static_assert(sizeof(apg_match_t) == sizeof(apg::MatchOut), "apg_match_t and apg::MatchOut must have the same layout");
+    return guarded([&] { ctx->engine->match_text(utf8, utf8_len, source, min_risk, reinterpret_cast<apg::MatchOut*>(out)); });
+}
+
 APG_API apg_status_t APG_CALL apg_get_info(apg_context_t* ctx, uint8_t** out_json, size_t* out_len) {
     if (out_json != nullptr) *out_json = nullptr;
     if (out_len != nullptr) *out_len = 0;

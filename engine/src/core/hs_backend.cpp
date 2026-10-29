@@ -22,6 +22,8 @@ struct ScanCtx {
     std::vector<Candidate>* out;
     size_t max_hits;
     bool overflow;
+    CandidateSink* sink;
+    size_t seen;
 };
 
 int on_match(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void* vctx) {
@@ -30,7 +32,7 @@ int on_match(unsigned int id, unsigned long long from, unsigned long long to, un
     ScanCtx* ctx = static_cast<ScanCtx*>(vctx);
     const auto it = ctx->data->pattern_index_by_id.find(static_cast<uint32_t>(id));
     if (it == ctx->data->pattern_index_by_id.end()) return 0;   // not one of ours: ignore
-    if (ctx->out->size() >= ctx->max_hits) {
+    if ((ctx->sink != nullptr ? ctx->seen : ctx->out->size()) >= ctx->max_hits) {
         ctx->overflow = true;
         return 1;                                                  // non-zero stops the scan
     }
@@ -39,6 +41,10 @@ int on_match(unsigned int id, unsigned long long from, unsigned long long to, un
     c.pattern_index = static_cast<uint32_t>(it->second);
     c.end = static_cast<uint64_t>(to);
     c.exact = (p.cls == PatternClass::Native);
+    if (ctx->sink != nullptr) {
+        ++ctx->seen;
+        return ctx->sink->on_candidate(c) ? 1 : 0;                 // the caller has what it wanted: stop the scan
+    }
     ctx->out->push_back(c);
     return 0;
 }
@@ -71,7 +77,7 @@ std::unique_ptr<BackendScratch> HsBackend::new_scratch() const {
 }
 
 bool HsBackend::scan(int profile, const char* data, size_t len, BackendScratch& scratch, std::vector<Candidate>& out,
-                     size_t max_hits) const {
+                     size_t max_hits, CandidateSink* sink) const {
     if (profile < 0 || static_cast<size_t>(profile) >= dbs_.size()) return true;
     const std::vector<hs_database_t*>& shards = dbs_[static_cast<size_t>(profile)];
     if (shards.empty()) return true;
@@ -82,6 +88,8 @@ bool HsBackend::scan(int profile, const char* data, size_t len, BackendScratch& 
     ctx.out = &out;
     ctx.max_hits = max_hits;
     ctx.overflow = false;
+    ctx.sink = sink;
+    ctx.seen = 0;
     // Every shard sees the same text; a pattern lives in exactly one shard, so no candidate appears twice.
     for (hs_database_t* db : shards) {
         if (db == nullptr) continue;

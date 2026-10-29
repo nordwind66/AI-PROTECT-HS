@@ -27,6 +27,13 @@ public:
     std::vector<std::pair<uint32_t, int>> exec_errors;
 };
 
+// Receives every candidate while the scan runs (instead of `out`); returning true stops the scan (used by the first-match scan).
+class CandidateSink {
+public:
+    virtual ~CandidateSink() {}
+    virtual bool on_candidate(const Candidate& c) = 0;
+};
+
 class PatternBackend {
 public:
     virtual ~PatternBackend() {}
@@ -35,8 +42,9 @@ public:
     // Scans one view text with all patterns of `profile` (index into RuleSetData::profiles). Appends one
     // Candidate per matching pattern. Returns false if more than max_hits candidates were produced; the
     // output is then incomplete and the caller must report a limit status.
+    // With `sink` != nullptr every candidate is handed to it at once (and not appended); the scan ends as soon as it returns true.
     virtual bool scan(int profile, const char* data, size_t len, BackendScratch& scratch,
-                      std::vector<Candidate>& out, size_t max_hits) const = 0;
+                      std::vector<Candidate>& out, size_t max_hits, CandidateSink* sink = nullptr) const = 0;
 };
 
 }  // namespace apg

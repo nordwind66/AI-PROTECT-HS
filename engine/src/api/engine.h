@@ -22,6 +22,8 @@ public:
 
     // With `verdict` != nullptr only the verdict is computed (the returned string is empty).
     std::string scan_text(const uint8_t* utf8, size_t len, const char* source, ScanVerdict* verdict = nullptr);
+    // Stops at the first rule that matches (see run_first_match).
+    void match_text(const uint8_t* utf8, size_t len, const char* source, double min_risk, MatchOut* out);
     std::string scan_json(const uint8_t* json, size_t len);
     std::string info_json();
     // Builds + verifies a new rule set completely, then swaps it in. On failure the old one stays active.

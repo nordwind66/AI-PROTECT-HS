@@ -29,7 +29,7 @@ std::unique_ptr<BackendScratch> Pcre2Backend::new_scratch() const {
 }
 
 bool Pcre2Backend::scan(int profile, const char* data, size_t len, BackendScratch& scratch, std::vector<Candidate>& out,
-                        size_t max_hits) const {
+                        size_t max_hits, CandidateSink* sink) const {
     if (profile < 0 || static_cast<size_t>(profile) >= by_profile_.size()) return true;
     Pcre2BackendScratch& sc = static_cast<Pcre2BackendScratch&>(scratch);
     for (int idx : by_profile_[static_cast<size_t>(profile)]) {
@@ -42,7 +42,11 @@ bool Pcre2Backend::scan(int profile, const char* data, size_t len, BackendScratc
             c.pattern_index = static_cast<uint32_t>(idx);
             c.end = end;
             c.exact = true;
-            out.push_back(c);
+            if (sink != nullptr) {
+                if (sink->on_candidate(c)) return true;
+            } else {
+                out.push_back(c);
+            }
         } else if (r == Pcre2Set::Result::Error) {
             sc.exec_errors.emplace_back(static_cast<uint32_t>(idx), err);
         }

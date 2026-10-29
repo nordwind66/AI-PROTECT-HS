@@ -85,6 +85,9 @@ struct RuleSetData {
     std::unordered_map<uint32_t, int> pattern_index_by_id;
     std::vector<RuleDef> rules;
     ScoringDef scoring;
+    // For the first-match scan (apg_match_text), built once after parsing. Rules that need request context can never match there.
+    std::vector<std::vector<int>> early_rules_by_pattern;     // pattern -> rules without `not` that can be decided the moment it hits
+    std::vector<int> late_rules;                               // rules with a `not` node: decided after the whole text was scanned
 
     int field_index(const std::string& name) const {
         for (size_t i = 0; i < fields.size(); ++i) {

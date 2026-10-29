@@ -73,14 +73,31 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 |---|---|
 | `apg_scan_text_verdict(ctx, utf8, len, source, &verdict)` | **最便宜**：只返回结论（`decision`、`score`、命中规则数），写进调用方的 `apg_verdict_t`。不生成 JSON，不定位举证文本，没有任何需要释放的东西。检测结果与 `apg_scan_text` 完全相同 |
 | `apg_scan_text_hits(ctx, utf8, len, source, hits, hits_cap, &verdict)` | **只要“规则编号 + 命中文本”时用它**：调用方给一个 `apg_hit_t hits[N]` 数组（例如 8 个），引擎写入 `min(命中规则数, N)` 条，风险最高的在前，每条规则一条：`rule_id`（如 `AIPS-PI-0009`）和 `matched_text`（原文里命中的片段，最长 255 字节，在字符边界截断）。`verdict.matched_rules` 是命中规则的总数，大于 N 说明放不下。无 JSON、无分配、无需释放，规则与分数和 `apg_scan_text` 一致 |
+| `apg_match_text(ctx, utf8, len, source, min_risk, &match)` | **只要“有没有命中、命中了哪条”时用它（最快）**：命中第一条规则就结束，**包括 Hyperscan 扫描本身也在第一个满足条件的规则出现时立即停止**，不再扫描剩余文本和后续视图。结果写进调用方的一个 `apg_match_t`：`matched`（1/0）、`scan_error`、`rule_id`、`matched_text`。无循环、无数组、无分配、无需释放 |
 | `apg_scan_text_into(ctx, utf8, len, source, buf, cap, &out_len)` | 和 `apg_scan_text` 一样返回 JSON，但写进**调用方自己的缓冲区**（NUL 结尾），不需要释放 |
 | `apg_scan_json_into(ctx, req, req_len, buf, cap, &out_len)` | 同上，结构化入口 |
 
 `apg_hit_t`：`char rule_id[32]`、`char matched_text[256]`（均以 NUL 结尾）。`apg_verdict_t`：`decision`（`APG_DECISION_ALLOW=0` / `REVIEW=1` / `ALERT=2` / `BLOCK=3`）、`scan_error`（1 表示文本无法扫描，`decision` 取自 `policy.on_error`）、`score`、`matched_rules`。
 
+`apg_match_t`：`int32 matched`、`int32 scan_error`、`char rule_id[32]`、`char matched_text[256]`。`apg_match_text` 与完整扫描的区别：
+
+- 返回的是**最先满足的那条规则**，不一定是风险最高的；不计算分数和 `decision`。
+- `min_risk`（0~1）：规则的风险（`weight × confidence × 来源系数`）不低于该值才算命中；`0` 表示任何规则都算。只想拦截会达到 `alert` 的规则时传 `0.5`（`policy.thresholds.alert` 的默认值），避免低权重、只给 `review` 的规则提前命中。
+- 需要请求上下文（`context_requires`）的规则在这个接口里不会命中；条件里带 `not` 的规则要扫完全文才能判定，所以不会提前结束扫描，但仍然会命中。
+- 干净文本必须整个扫完，耗时和完整扫描相同；收益在命中的请求上（命中越早，省得越多）。
+- 文本不是合法 UTF-8、超长或超过扫描上限时 `scan_error=1`、`matched=0`，调用返回 `APG_OK`；`decision` 取自 `policy.on_error` 的逻辑由调用方自己处理。
+
 缓冲区太小时返回 `APG_ERR_BUFFER_TOO_SMALL`（9），不写入任何内容，`*out_len` 给出所需长度（再加 1 个终止符）；用更大的缓冲区重新调用即可。每个线程准备一块 64 KB 的缓冲区一般够用（命中规则很多或文本很长时 JSON 会更大）。
 
-推荐的热路径写法：只用一个 `apg_scan_text_hits`：`verdict.decision` 决定放行与否，`hits[]` 给出命中的规则编号和文本，需要更多信息（规则名、类别、偏移、所在句子）时才对个别请求调 `apg_scan_text_into`。
+最简热路径写法：
+
+```c
+apg_match_t m;
+if (apg_match_text(ctx, (const uint8_t *)text, len, "user_input", 0.5, &m) == APG_OK && m.matched)
+    printf("%s: %s\n", m.rule_id, m.matched_text);      /* 命中：拦截或记录 */
+```
+
+需要所有命中规则、分数和决策时，用 `apg_scan_text_hits`：`verdict.decision` 决定放行与否，`hits[]` 给出命中的规则编号和文本，需要更多信息（规则名、类别、偏移、所在句子）时才对个别请求调 `apg_scan_text_into`。
 
 ## 4. 状态码
 

@@ -21,7 +21,7 @@ public:
     const char* name() const override { return "pcre2_fallback"; }
     std::unique_ptr<BackendScratch> new_scratch() const override;
     bool scan(int profile, const char* data, size_t len, BackendScratch& scratch, std::vector<Candidate>& out,
-              size_t max_hits) const override;
+              size_t max_hits, CandidateSink* sink = nullptr) const override;
     const Pcre2Set& set() const { return set_; }
 
 private:

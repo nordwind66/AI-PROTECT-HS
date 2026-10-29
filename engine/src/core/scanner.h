@@ -50,4 +50,19 @@ struct ScanVerdict {
 std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, ThreadScratch& scratch,
                      ScanVerdict* verdict = nullptr);
 
+// The first-match scan: stops as soon as ONE rule is satisfied (also inside the Hyperscan scan) and reports that rule.
+// Same layout as apg_match_t of the public header.
+struct MatchOut {
+    int32_t matched;
+    int32_t scan_error;
+    char rule_id[32];
+    char matched_text[256];
+};
+
+// Plain text only (no named fields, no request context: rules that need context never match here). A rule counts when its condition
+// is true and its risk (weight * confidence * source multiplier) is at least `min_risk`. Rules with a `not` in the condition are
+// decided after the whole text was scanned, all others at the moment their last pattern hits.
+void run_first_match(const LoadedRuleset& rs, const Config& cfg, const char* text, size_t len, const char* source, double min_risk,
+                     ThreadScratch& scratch, MatchOut* out);
+
 }  // namespace apg

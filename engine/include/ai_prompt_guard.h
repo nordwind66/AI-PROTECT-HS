@@ -118,6 +118,16 @@ typedef struct apg_hit {
                                               cut at a character boundary; empty if it could not be located)       */
 } apg_hit_t;
 
+/* (ABI 1.1) The result of apg_match_text(): the FIRST rule that matched. One struct of the caller, nothing is allocated. */
+typedef struct apg_match {
+    int32_t  matched;                      /* 1: a rule matched (rule_id / matched_text are set); 0: none            */
+    int32_t  scan_error;                   /* 1: the text could not be scanned (invalid UTF-8, too long, scan limits);
+                                              matched is then 0                                                   */
+    char     rule_id[APG_HIT_RULE_ID_MAX];     /* e.g. "AIPS-PI-0009", NUL-terminated ("" if none)                  */
+    char     matched_text[APG_HIT_TEXT_MAX];   /* fragment of the ORIGINAL text that matched (UTF-8, NUL-terminated,
+                                                  cut at a character boundary; "" if it could not be located)     */
+} apg_match_t;
+
 /* ---- identification --------------------------------------------------------------------- */
 
 /* ABI version of the loaded library, see APG_ABI_VERSION. */
@@ -223,6 +233,19 @@ APG_API apg_status_t APG_CALL apg_scan_text_hits(apg_context_t *ctx, const uint8
                                                  size_t utf8_len, const char *source,
                                                  apg_hit_t *hits, size_t hits_cap,
                                                  apg_verdict_t *out_verdict);
+
+/*
+ * (ABI 1.1) First match: ends the scan as soon as ONE rule matched - also inside the Hyperscan scan - and reports that
+ * rule. The result goes into *out (caller-owned memory, no allocation, nothing to free).
+ *   min_risk : a rule counts only if its risk (weight * confidence * source multiplier, 0..1) is at least this value;
+ *              0 = every rule counts. Use e.g. 0.5 to ignore low-weight "review only" rules.
+ * Differences to apg_scan_text: it reports the first rule that is satisfied, not the highest-risk one, and it does not
+ * compute score or decision. Rules that need request context (context_requires) never match here. Rules whose
+ * condition contains a "not" can only be decided after the whole text was scanned, so they do not end the scan early.
+ * Returns APG_OK also when nothing matched (out->matched == 0); out is always initialised.
+ */
+APG_API apg_status_t APG_CALL apg_match_text(apg_context_t *ctx, const uint8_t *utf8, size_t utf8_len,
+                                             const char *source, double min_risk, apg_match_t *out);
 
 /*
  * Structured entry point: request_json is a UTF-8 JSON document (schemas/request.schema.json) with

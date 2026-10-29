@@ -158,6 +158,38 @@ struct NeedsCtx {
     double risk;
 };
 
+// Three-valued truth of a rule's condition tree; leaf(const LeafDef&) returns the state of one leaf.
+template <class LeafFn>
+int8_t eval_rule(const RuleDef& r, std::vector<int8_t>& vals, LeafFn&& leaf) {
+    vals.assign(r.nodes.size(), static_cast<int8_t>(kFalse));
+    for (size_t ni = 0; ni < r.nodes.size(); ++ni) {          // children always precede their parent
+        const CondNode& n = r.nodes[ni];
+        int8_t v = kFalse;
+        if (n.op == CondNode::Leaf) {
+            v = leaf(r.leaves[static_cast<size_t>(n.leaf)]);
+        } else if (n.op == CondNode::Any) {
+            bool any_true = false, all_false = true;
+            for (int k : n.kids) {
+                if (vals[static_cast<size_t>(k)] == kTrue) any_true = true;
+                if (vals[static_cast<size_t>(k)] != kFalse) all_false = false;
+            }
+            v = any_true ? kTrue : (all_false ? kFalse : kUnknown);
+        } else if (n.op == CondNode::All) {
+            bool any_false = false, all_true = true;
+            for (int k : n.kids) {
+                if (vals[static_cast<size_t>(k)] == kFalse) any_false = true;
+                if (vals[static_cast<size_t>(k)] != kTrue) all_true = false;
+            }
+            v = any_false ? kFalse : (all_true ? kTrue : kUnknown);
+        } else {  // Not
+            const int8_t c = vals[static_cast<size_t>(n.kids[0])];
+            v = c == kUnknown ? kUnknown : (c == kTrue ? kFalse : kTrue);
+        }
+        vals[ni] = v;
+    }
+    return vals[static_cast<size_t>(r.root)];
+}
+
 double combine(const std::vector<double>& risks, const std::vector<std::string>& groups) {
     // best risk per score group (rules without group count individually), then noisy-OR
     std::map<std::string, double> best;
@@ -471,41 +503,15 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
         }
         if (ctx_state == 2) continue;
 
-        vals.assign(r.nodes.size(), static_cast<int8_t>(kFalse));
         missing_field_idx.clear();
-        for (size_t ni = 0; ni < r.nodes.size(); ++ni) {          // children always precede their parent
-            const CondNode& n = r.nodes[ni];
-            int8_t v = kFalse;
-            if (n.op == CondNode::Leaf) {
-                const LeafDef& lf = r.leaves[static_cast<size_t>(n.leaf)];
-                const int ti = field_target[static_cast<size_t>(lf.field)];
-                if (ti < 0) {
-                    v = kUnknown;
-                    if (std::find(missing_field_idx.begin(), missing_field_idx.end(), lf.field) == missing_field_idx.end()) missing_field_idx.push_back(lf.field);
-                } else {
-                    v = targets[static_cast<size_t>(ti)].has_hit(static_cast<uint32_t>(lf.pattern)) ? kTrue : kFalse;
-                }
-            } else if (n.op == CondNode::Any) {
-                bool any_true = false, all_false = true;
-                for (int k : n.kids) {
-                    if (vals[static_cast<size_t>(k)] == kTrue) any_true = true;
-                    if (vals[static_cast<size_t>(k)] != kFalse) all_false = false;
-                }
-                v = any_true ? kTrue : (all_false ? kFalse : kUnknown);
-            } else if (n.op == CondNode::All) {
-                bool any_false = false, all_true = true;
-                for (int k : n.kids) {
-                    if (vals[static_cast<size_t>(k)] == kFalse) any_false = true;
-                    if (vals[static_cast<size_t>(k)] != kTrue) all_true = false;
-                }
-                v = any_false ? kFalse : (all_true ? kTrue : kUnknown);
-            } else {  // Not
-                const int8_t c = vals[static_cast<size_t>(n.kids[0])];
-                v = c == kUnknown ? kUnknown : (c == kTrue ? kFalse : kTrue);
+        const int8_t truth = eval_rule(r, vals, [&](const LeafDef& lf) -> int8_t {
+            const int ti = field_target[static_cast<size_t>(lf.field)];
+            if (ti < 0) {
+                if (std::find(missing_field_idx.begin(), missing_field_idx.end(), lf.field) == missing_field_idx.end()) missing_field_idx.push_back(lf.field);
+                return kUnknown;
             }
-            vals[ni] = v;
-        }
-        const int8_t truth = vals[static_cast<size_t>(r.root)];
+            return targets[static_cast<size_t>(ti)].has_hit(static_cast<uint32_t>(lf.pattern)) ? kTrue : kFalse;
+        });
         if (truth == kFalse) continue;          // cannot be satisfied: no evidence to collect
         // evidence: leaves that matched
         std::vector<uint32_t> pids;
@@ -744,6 +750,177 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     w.value_null();
     w.end_object();
     return out;
+}
+
+// ---- first match -----------------------------------------------------------------------------------------------------
+namespace {
+
+// Handles the candidates of the running scan: confirms them with PCRE2 where needed, records the hit and decides at once whether
+// a rule became true. Returning true ends the Hyperscan scan.
+class FirstMatchSink : public CandidateSink {
+public:
+    FirstMatchSink(const LoadedRuleset& rs, const Config& cfg, ThreadScratch& sc, Target& t, const std::vector<int>& primary_fields,
+                   double mult, double min_risk, std::chrono::steady_clock::time_point t0)
+        : rs_(rs), d_(*rs.data), cfg_(cfg), sc_(sc), t_(t), primary_(primary_fields), mult_(mult), min_risk_(min_risk), t0_(t0) {
+        vals_.reserve(64);
+    }
+
+    // The view that is being scanned.
+    void set_view(const char* data, size_t len, ViewKind eff, bool changed) {
+        vdata_ = data; vlen_ = len; eff_ = eff; changed_ = changed;
+    }
+
+    bool on_candidate(const Candidate& c) override {
+        if (t_.has_hit(c.pattern_index)) return false;
+        uint64_t end = c.end;
+        if (!c.exact) {
+            if (!rs_.verifier || !rs_.verifier->has(static_cast<int>(c.pattern_index)) || !sc_.verify) return false;
+            const auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t0_).count();
+            if (static_cast<uint64_t>(us) > cfg_.limits.verify_budget_us) return false;
+            int perr = 0;
+            if (rs_.verifier->match(static_cast<int>(c.pattern_index), vdata_, vlen_, *sc_.verify, &end, &perr) != Pcre2Set::Result::Match) return false;
+        }
+        t_.bits[c.pattern_index >> 6] |= (1ull << (c.pattern_index & 63));
+        HitInfo h;
+        h.pattern_index = c.pattern_index;
+        h.view = static_cast<int>(eff_);
+        h.end_view = end;
+        h.end_original = original_end(t_, eff_, changed_, end);
+        t_.hits.push_back(h);
+        for (int ri : d_.early_rules_by_pattern[c.pattern_index]) {
+            if (qualifies(d_.rules[static_cast<size_t>(ri)])) {
+                rule_ = &d_.rules[static_cast<size_t>(ri)];
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // True if the rule is satisfied by the hits so far and its risk reaches min_risk.
+    bool qualifies(const RuleDef& r) {
+        const int8_t truth = eval_rule(r, vals_, [&](const LeafDef& lf) -> int8_t {
+            if (!supplied(lf.field)) return kUnknown;
+            return t_.has_hit(static_cast<uint32_t>(lf.pattern)) ? kTrue : kFalse;
+        });
+        if (truth != kTrue) return false;
+        double risk = r.weight * r.confidence * mult_;
+        if (risk > 1.0) risk = 1.0;
+        return risk >= min_risk_;
+    }
+
+    const RuleDef* rule() const { return rule_; }
+
+private:
+    bool supplied(int field) const {
+        for (int f : primary_) {
+            if (f == field) return true;
+        }
+        return false;
+    }
+
+    const LoadedRuleset& rs_;
+    const RuleSetData& d_;
+    const Config& cfg_;
+    ThreadScratch& sc_;
+    Target& t_;
+    const std::vector<int>& primary_;
+    double mult_, min_risk_;
+    std::chrono::steady_clock::time_point t0_;
+    std::vector<int8_t> vals_;
+    const char* vdata_ = nullptr;
+    size_t vlen_ = 0;
+    ViewKind eff_ = ViewKind::Raw;
+    bool changed_ = false;
+    const RuleDef* rule_ = nullptr;
+};
+
+}  // namespace
+
+void run_first_match(const LoadedRuleset& rs, const Config& cfg, const char* text, size_t len, const char* source, double min_risk,
+                     ThreadScratch& sc, MatchOut* out) {
+    std::memset(out, 0, sizeof *out);
+    const auto t_start = std::chrono::steady_clock::now();
+    const RuleSetData& d = *rs.data;
+    if (len == 0) return;
+    size_t bad = 0;
+    if (len > cfg.limits.max_text_bytes || !utf8_valid(reinterpret_cast<const uint8_t*>(text), len, &bad)) {
+        out->scan_error = 1;
+        return;
+    }
+    const std::string src = (source == nullptr || source[0] == '\0') ? std::string("user_input") : std::string(source);
+    std::vector<int> content_only;
+    const std::vector<int>* primary = nullptr;
+    {
+        auto it = d.source_fields.find(src);
+        if (it != d.source_fields.end()) {
+            primary = &it->second;
+        } else {
+            const int content = d.field_index("content");
+            if (content >= 0) content_only.push_back(content);
+            primary = &content_only;
+        }
+    }
+    Target t;
+    t.text = text;
+    t.len = len;
+    t.bits.assign((d.patterns.size() + 63) / 64, 0);
+    FirstMatchSink sink(rs, cfg, sc, t, *primary, d.scoring.multiplier_for(src), min_risk, t_start);
+
+    bool hit_limit = false;
+    std::vector<Candidate> unused;                                      // the sink takes the candidates; nothing is appended
+    for (size_t pi = 0; pi < d.profiles.size() && sink.rule() == nullptr; ++pi) {
+        if (d.profile_pattern_count[pi] == 0) continue;
+        unsigned done = 0;
+        for (ViewKind vk : d.profiles[pi].views) {
+            const char* vdata = nullptr;
+            size_t vlen = 0;
+            const bool changed = get_view(t, vk, false, &vdata, &vlen);
+            const ViewKind eff = changed ? vk : ViewKind::Raw;
+            if ((done >> static_cast<int>(eff)) & 1u) continue;
+            done |= 1u << static_cast<int>(eff);
+            if (vlen == 0) continue;
+            sink.set_view(vdata, vlen, eff, changed);
+            sc.backend->exec_errors.clear();
+            if (!rs.backend->scan(static_cast<int>(pi), vdata, vlen, *sc.backend, unused, cfg.limits.max_hits, &sink)) {
+                hit_limit = true;
+                break;
+            }
+            if (sink.rule() != nullptr) break;
+        }
+    }
+    if (hit_limit) {
+        out->scan_error = 1;
+        return;
+    }
+    const RuleDef* hit_rule = sink.rule();
+    if (hit_rule == nullptr) {                                          // rules with a `not` can only be decided once everything was scanned
+        for (int ri : d.late_rules) {
+            if (sink.qualifies(d.rules[static_cast<size_t>(ri)])) {
+                hit_rule = &d.rules[static_cast<size_t>(ri)];
+                break;
+            }
+        }
+    }
+    if (hit_rule == nullptr) return;
+
+    out->matched = 1;
+    std::strncpy(out->rule_id, hit_rule->id.c_str(), sizeof out->rule_id - 1);
+    // matched_text: the first leaf of the rule that hit
+    for (const LeafDef& lf : hit_rule->leaves) {
+        if (!t.has_hit(static_cast<uint32_t>(lf.pattern))) continue;
+        const HitInfo* hi = t.hit_info(static_cast<uint32_t>(lf.pattern));
+        if (hi == nullptr) continue;
+        if (hi->view != static_cast<int>(ViewKind::Raw)) {              // offsets back to the original text are recorded only on request
+            Normalized& n = t.norm[hi->view];
+            if (n.offsets.size() != n.text.size() + 1) normalize(static_cast<ViewKind>(hi->view), reinterpret_cast<const uint8_t*>(text), len, true, n);
+        }
+        Span sp;
+        if (!locate_span(rs, sc, t, *hi, &sp)) break;
+        size_t take = static_cast<size_t>(sp.eo - sp.so);
+        if (take > sizeof out->matched_text - 1) take = utf8_floor(text + sp.so, len - static_cast<size_t>(sp.so), sizeof out->matched_text - 1);
+        std::memcpy(out->matched_text, text + sp.so, take);
+        break;
+    }
 }
 
 }  // namespace apg

@@ -27,7 +27,7 @@ public:
     const char* name() const override { return "hyperscan"; }
     std::unique_ptr<BackendScratch> new_scratch() const override;
     bool scan(int profile, const char* data, size_t len, BackendScratch& scratch, std::vector<Candidate>& out,
-              size_t max_hits) const override;
+              size_t max_hits, CandidateSink* sink = nullptr) const override;
 
     // Deserialises a database built by the compiler. Throws Error(Version / Platform / Database).
     static hs_database_t* deserialize(const std::string& bytes);

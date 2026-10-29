@@ -197,6 +197,21 @@ std::shared_ptr<RuleSetData> parse_snapshot(const std::string& bytes) {
     } catch (const Error&) {
         throw;
     }
+    data->early_rules_by_pattern.assign(data->patterns.size(), std::vector<int>());
+    for (size_t ri = 0; ri < data->rules.size(); ++ri) {
+        const RuleDef& r = data->rules[ri];
+        if (!r.context_requires.empty()) continue;
+        bool has_not = false;
+        for (const CondNode& n : r.nodes) has_not = has_not || n.op == CondNode::Not;
+        if (has_not) {
+            data->late_rules.push_back(static_cast<int>(ri));
+            continue;
+        }
+        for (const LeafDef& lf : r.leaves) {
+            std::vector<int>& v = data->early_rules_by_pattern[static_cast<size_t>(lf.pattern)];
+            if (v.empty() || v.back() != static_cast<int>(ri)) v.push_back(static_cast<int>(ri));
+        }
+    }
     return data;
 }
 
