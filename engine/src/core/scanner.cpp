@@ -32,7 +32,7 @@ struct Target {
     bool changed[kViewKindCount] = {};
     std::vector<uint64_t> bits;
     std::vector<HitInfo> hits;
-    std::set<int> views_scanned;
+    unsigned views_scanned = 0;           // bit mask of the effective views that were scanned (bit = ViewKind)
 
     bool has_hit(uint32_t pi) const { return (bits[pi >> 6] >> (pi & 63)) & 1ull; }
     const HitInfo* hit_info(uint32_t pi) const {
@@ -131,6 +131,8 @@ std::string sentence_around(const char* text, size_t len, size_t so, size_t eo, 
     return std::string(text + b, e - b);
 }
 
+int decision_code(const std::string& d) { return d == "allow" ? 0 : d == "review" ? 1 : d == "alert" ? 2 : 3; }
+
 std::string decision_for_error(const Config& cfg) {
     const std::string& s = cfg.policy.on_error;
     if (s == "block" && !cfg.policy.allow_block) return "review";
@@ -171,7 +173,15 @@ double combine(const std::vector<double>& risks, const std::vector<std::string>&
 }
 
 void write_error_result(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, const char* error_code,
-                        const std::string& detail, size_t text_bytes, uint64_t duration_us, std::string& out) {
+                        const std::string& detail, size_t text_bytes, uint64_t duration_us, std::string& out,
+                        ScanVerdict* verdict) {
+    if (verdict != nullptr) {
+        verdict->decision = decision_code(decision_for_error(cfg));
+        verdict->scan_error = true;
+        verdict->score = 0.0;
+        verdict->matched_rules = 0;
+        return;
+    }
     JsonWriter w(out);
     w.begin_object();
     w.kv_int("schema_version", 1);
@@ -250,7 +260,8 @@ static void emit_evidence_text(JsonWriter& w, const LoadedRuleset& rs, ThreadScr
     if (cut || sentence_cut) w.kv_bool("text_truncated", true);
 }
 
-std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, ThreadScratch& sc) {
+std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, ThreadScratch& sc,
+                     ScanVerdict* verdict) {
     const auto t_start = std::chrono::steady_clock::now();
     auto elapsed_us = [&]() -> uint64_t {
         return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -258,7 +269,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     };
     const RuleSetData& d = *rs.data;
     std::string out;
-    out.reserve(1024);
+    if (verdict == nullptr) out.reserve(1024);
 
     // ---- 1. validate the input --------------------------------------------------------------------------
     size_t total_bytes = in.text_len;
@@ -266,26 +277,26 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     if (in.text_len > cfg.limits.max_text_bytes) {
         write_error_result(rs, cfg, in, "input_too_large",
                            "text of " + std::to_string(in.text_len) + " bytes exceeds limits.max_text_bytes", in.text_len,
-                           elapsed_us(), out);
+                           elapsed_us(), out, verdict);
         return out;
     }
     for (const FieldIn& f : in.fields) {
         if (f.value.size() > cfg.limits.max_text_bytes) {
             write_error_result(rs, cfg, in, "input_too_large", "field '" + f.name + "' exceeds limits.max_text_bytes",
-                               total_bytes, elapsed_us(), out);
+                               total_bytes, elapsed_us(), out, verdict);
             return out;
         }
     }
     size_t bad = 0;
     if (in.text_len > 0 && !utf8_valid(reinterpret_cast<const uint8_t*>(in.text), in.text_len, &bad)) {
         write_error_result(rs, cfg, in, "invalid_utf8", "text is not valid UTF-8 (first bad byte at offset " + std::to_string(bad) + ")",
-                           total_bytes, elapsed_us(), out);
+                           total_bytes, elapsed_us(), out, verdict);
         return out;
     }
     for (const FieldIn& f : in.fields) {
         if (!utf8_valid(reinterpret_cast<const uint8_t*>(f.value.data()), f.value.size(), &bad)) {
             write_error_result(rs, cfg, in, "invalid_utf8", "field '" + f.name + "' is not valid UTF-8", total_bytes,
-                               elapsed_us(), out);
+                               elapsed_us(), out, verdict);
             return out;
         }
     }
@@ -350,14 +361,15 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
         if (t.len == 0) continue;
         for (size_t pi = 0; pi < d.profiles.size(); ++pi) {
             if (d.profile_pattern_count[pi] == 0) continue;
-            std::set<int> done;                               // effective views already scanned for this profile
+            unsigned done = 0;                                // bit mask of the effective views already scanned for this profile
             for (ViewKind vk : d.profiles[pi].views) {
                 const char* vdata = nullptr;
                 size_t vlen = 0;
                 const bool changed = get_view(t, vk, want_offsets, &vdata, &vlen);
                 const ViewKind eff = changed ? vk : ViewKind::Raw;
-                if (!done.insert(static_cast<int>(eff)).second) continue;
-                t.views_scanned.insert(static_cast<int>(eff));
+                if ((done >> static_cast<int>(eff)) & 1u) continue;
+                done |= 1u << static_cast<int>(eff);
+                t.views_scanned |= 1u << static_cast<int>(eff);
                 if (vlen == 0) continue;
                 cands.clear();
                 sc.backend->exec_errors.clear();
@@ -404,7 +416,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     }
     if (hit_limit) {
         write_error_result(rs, cfg, in, "hit_limit_exceeded", "more than limits.max_hits candidate matches in one view",
-                           total_bytes, elapsed_us(), out);
+                           total_bytes, elapsed_us(), out, verdict);
         return out;
     }
 
@@ -413,10 +425,13 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     std::vector<Matched> matched;
     std::vector<NeedsCtx> needs;
     std::vector<int8_t> vals;
+    vals.reserve(64);
+    std::vector<const std::string*> missing_ctx;               // reused for every rule
+    std::vector<int> missing_field_idx;                       // reused for every rule: no allocation on the common path
     for (const RuleDef& r : d.rules) {
         // context gate
         int ctx_state = 0;                                   // 0 ok, 1 missing, 2 mismatch
-        std::vector<std::string> missing_ctx;
+        missing_ctx.clear();
         for (const auto& req : r.context_requires) {
             const std::pair<std::string, std::string>* found = nullptr;
             for (const auto& kv : in.context) {
@@ -427,7 +442,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
             }
             if (found == nullptr) {
                 ctx_state = std::max(ctx_state, 1);
-                missing_ctx.push_back(req.first);
+                missing_ctx.push_back(&req.first);
             } else if (found->second != req.second) {
                 ctx_state = 2;
                 break;
@@ -436,7 +451,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
         if (ctx_state == 2) continue;
 
         vals.assign(r.nodes.size(), static_cast<int8_t>(kFalse));
-        std::vector<std::string> missing_fields;
+        missing_field_idx.clear();
         for (size_t ni = 0; ni < r.nodes.size(); ++ni) {          // children always precede their parent
             const CondNode& n = r.nodes[ni];
             int8_t v = kFalse;
@@ -445,8 +460,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
                 const int ti = field_target[static_cast<size_t>(lf.field)];
                 if (ti < 0) {
                     v = kUnknown;
-                    const std::string& fname = d.fields[static_cast<size_t>(lf.field)];
-                    if (std::find(missing_fields.begin(), missing_fields.end(), fname) == missing_fields.end()) missing_fields.push_back(fname);
+                    if (std::find(missing_field_idx.begin(), missing_field_idx.end(), lf.field) == missing_field_idx.end()) missing_field_idx.push_back(lf.field);
                 } else {
                     v = targets[static_cast<size_t>(ti)].has_hit(static_cast<uint32_t>(lf.pattern)) ? kTrue : kFalse;
                 }
@@ -502,8 +516,8 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
             NeedsCtx n;
             n.rule = &r;
             n.reason = "context_missing";
-            std::sort(missing_ctx.begin(), missing_ctx.end());
-            n.missing = missing_ctx;
+            for (const std::string* m : missing_ctx) n.missing.push_back(*m);
+            std::sort(n.missing.begin(), n.missing.end());
             n.pattern_ids = std::move(pids);
             n.risk = risk;
             needs.push_back(std::move(n));
@@ -511,8 +525,8 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
             NeedsCtx n;
             n.rule = &r;
             n.reason = "field_missing";
-            std::sort(missing_fields.begin(), missing_fields.end());
-            n.missing = missing_fields;
+            for (int fi : missing_field_idx) n.missing.push_back(d.fields[static_cast<size_t>(fi)]);
+            std::sort(n.missing.begin(), n.missing.end());
             n.pattern_ids = std::move(pids);
             n.risk = risk;
             needs.push_back(std::move(n));
@@ -577,6 +591,13 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
         if (a.risk != b.risk) return a.risk > b.risk;
         return a.rule->id < b.rule->id;
     });
+    if (verdict != nullptr) {
+        verdict->decision = decision_code(decision);
+        verdict->scan_error = false;
+        verdict->score = score;
+        verdict->matched_rules = static_cast<uint32_t>(matched.size());
+        return out;
+    }
     const uint64_t duration_us = elapsed_us();
 
     // ---- 6. JSON ------------------------------------------------------------------------------------------------
@@ -669,9 +690,11 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     w.key("views_scanned");
     w.begin_array();
     {
-        std::set<int> views;
-        for (const Target& t : targets) views.insert(t.views_scanned.begin(), t.views_scanned.end());
-        for (int v : views) w.value_string(view_name(static_cast<ViewKind>(v)));
+        unsigned views = 0;
+        for (const Target& t : targets) views |= t.views_scanned;
+        for (int v = 0; v < kViewKindCount; ++v) {
+            if ((views >> v) & 1u) w.value_string(view_name(static_cast<ViewKind>(v)));
+        }
     }
     w.end_array();
     w.end_object();

@@ -62,7 +62,7 @@
 #endif
 
 #define APG_ABI_VERSION_MAJOR 1u
-#define APG_ABI_VERSION_MINOR 0u
+#define APG_ABI_VERSION_MINOR 1u
 #define APG_ABI_VERSION_PATCH 0u
 #define APG_ABI_VERSION \
     ((APG_ABI_VERSION_MAJOR << 16) | (APG_ABI_VERSION_MINOR << 8) | APG_ABI_VERSION_PATCH)
@@ -86,8 +86,28 @@ typedef enum apg_status {
     APG_ERR_OOM               = 6, /* memory allocation failed                                      */
     APG_ERR_LIMIT             = 7, /* a hard resource limit was exceeded before scanning started
                                       (e.g. request JSON larger than limits.max_request_bytes)       */
-    APG_ERR_INTERNAL          = 8  /* bug / unexpected exception (details in apg_last_error())       */
+    APG_ERR_INTERNAL          = 8, /* bug / unexpected exception (details in apg_last_error())       */
+    APG_ERR_BUFFER_TOO_SMALL  = 9  /* (ABI 1.1) apg_scan_*_into: the caller's buffer is too small;
+                                      *out_len is the size that is needed (without the terminator)   */
 } apg_status_t;
+
+/* (ABI 1.1) Decision codes of apg_verdict_t.decision. */
+enum {
+    APG_DECISION_ALLOW  = 0,
+    APG_DECISION_REVIEW = 1,
+    APG_DECISION_ALERT  = 2,
+    APG_DECISION_BLOCK  = 3  /* only when policy.allow_block is enabled */
+};
+
+/* (ABI 1.1) The verdict of one scan without any JSON: filled in by apg_scan_text_verdict(). */
+typedef struct apg_verdict {
+    int32_t  decision;       /* APG_DECISION_*                                                       */
+    int32_t  scan_error;     /* 0: the text was scanned; 1: it could not be (invalid UTF-8, too long,
+                                scan limits): decision is then the configured policy.on_error        */
+    double   score;          /* 0..1, the same value as "score" in the JSON result                   */
+    uint32_t matched_rules;  /* number of matched rules                                              */
+    uint32_t reserved;       /* always 0                                                             */
+} apg_verdict_t;
 
 /* ---- identification --------------------------------------------------------------------- */
 
@@ -152,6 +172,33 @@ APG_API void APG_CALL apg_destroy(apg_context_t *ctx);
 APG_API apg_status_t APG_CALL apg_scan_text(apg_context_t *ctx, const uint8_t *utf8,
                                             size_t utf8_len, const char *source,
                                             uint8_t **out_json, size_t *out_len);
+
+/*
+ * (ABI 1.1) Same as apg_scan_text, but the JSON result is written into a buffer OWNED BY THE CALLER, so the call itself
+ * allocates nothing for the result and there is nothing to free.
+ *   out_buf / out_cap : the caller's buffer and its size in bytes (the result is NUL-terminated inside it).
+ *   out_len           : receives the length of the document (without the terminator). If the buffer is too small the
+ *                       function returns APG_ERR_BUFFER_TOO_SMALL, writes nothing into out_buf and sets *out_len to
+ *                       the size that is needed (+1 for the terminator): call again with a buffer of at least *out_len + 1.
+ */
+APG_API apg_status_t APG_CALL apg_scan_text_into(apg_context_t *ctx, const uint8_t *utf8,
+                                                 size_t utf8_len, const char *source,
+                                                 uint8_t *out_buf, size_t out_cap, size_t *out_len);
+
+/* (ABI 1.1) apg_scan_json with a caller-owned result buffer; same contract as apg_scan_text_into. */
+APG_API apg_status_t APG_CALL apg_scan_json_into(apg_context_t *ctx, const uint8_t *request_json,
+                                                 size_t request_len,
+                                                 uint8_t *out_buf, size_t out_cap, size_t *out_len);
+
+/*
+ * (ABI 1.1) The cheapest scan: only the verdict (decision, score, number of matched rules) in a caller-owned struct. No
+ * JSON is built, no evidence text is located, nothing is returned that has to be freed. Use it on the hot path, and call
+ * apg_scan_text / apg_scan_text_into only for the requests whose decision is not APG_DECISION_ALLOW and that need the
+ * matched rules. Same detection as apg_scan_text (same score, same decision).
+ */
+APG_API apg_status_t APG_CALL apg_scan_text_verdict(apg_context_t *ctx, const uint8_t *utf8,
+                                                    size_t utf8_len, const char *source,
+                                                    apg_verdict_t *out_verdict);
 
 /*
  * Structured entry point: request_json is a UTF-8 JSON document (schemas/request.schema.json) with

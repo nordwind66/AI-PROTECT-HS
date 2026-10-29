@@ -67,7 +67,7 @@ std::shared_ptr<const LoadedRuleset> Engine::current() const {
     return current_;
 }
 
-std::string Engine::scan_text(const uint8_t* utf8, size_t len, const char* source) {
+std::string Engine::scan_text(const uint8_t* utf8, size_t len, const char* source, ScanVerdict* verdict) {
     Inflight guard(*this);
     if (utf8 == nullptr && len != 0) throw Error(Status::InvalidArgument, "utf8 is NULL but utf8_len is not 0");
     ScanInput in;
@@ -79,7 +79,7 @@ std::string Engine::scan_text(const uint8_t* utf8, size_t len, const char* sourc
     }
     std::shared_ptr<const LoadedRuleset> rs = current();
     LoadedRuleset::Lease lease = rs->lease();
-    return run_scan(*rs, cfg_, in, lease.get());
+    return run_scan(*rs, cfg_, in, lease.get(), verdict);
 }
 
 std::string Engine::scan_json(const uint8_t* json, size_t len) {

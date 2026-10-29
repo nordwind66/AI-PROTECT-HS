@@ -28,8 +28,18 @@ struct ScanInput {
     std::vector<std::pair<std::string, std::string>> context;         // scalar request context (string forms)
 };
 
-// Produces the JSON result document. Problems with the INPUT (invalid UTF-8, oversize text, scan limits) are
+// The outcome of a scan without JSON (decision codes as in the public header: 0 allow, 1 review, 2 alert, 3 block).
+struct ScanVerdict {
+    int decision = 0;
+    bool scan_error = false;       // the text could not be scanned; decision comes from policy.on_error
+    double score = 0.0;
+    uint32_t matched_rules = 0;
+};
+
+// Produces the JSON result document. With `verdict` != nullptr only the verdict is computed (no JSON, no evidence text,
+// the returned string is empty). Problems with the INPUT (invalid UTF-8, oversize text, scan limits) are
 // reported inside the document; only internal failures (out of memory, bugs) throw apg::Error.
-std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, ThreadScratch& scratch);
+std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput& in, ThreadScratch& scratch,
+                     ScanVerdict* verdict = nullptr);
 
 }  // namespace apg

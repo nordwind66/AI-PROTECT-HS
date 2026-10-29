@@ -11,7 +11,7 @@
 namespace apg {
 
 // Must equal APG_ABI_VERSION in include/ai_prompt_guard.h (checked by a static_assert in the API shim).
-constexpr uint32_t kAbiVersion = (1u << 16) | (0u << 8) | 0u;
+constexpr uint32_t kAbiVersion = (1u << 16) | (1u << 8) | 0u;
 // Version of the normalisation algorithms + tables. Rule sets compiled against another version are refused.
 constexpr uint32_t kNormTablesVersion = 1;
 constexpr int kSnapshotFormatVersion = 1;
@@ -27,7 +27,8 @@ enum class Status : int {
     Platform = 5,
     Oom = 6,
     Limit = 7,
-    Internal = 8
+    Internal = 8,
+    BufferTooSmall = 9
 };
 
 inline const char* status_name(Status s) {
@@ -41,6 +42,7 @@ inline const char* status_name(Status s) {
         case Status::Oom: return "APG_ERR_OOM";
         case Status::Limit: return "APG_ERR_LIMIT";
         case Status::Internal: return "APG_ERR_INTERNAL";
+        case Status::BufferTooSmall: return "APG_ERR_BUFFER_TOO_SMALL";
     }
     return "APG_ERR_INTERNAL";
 }

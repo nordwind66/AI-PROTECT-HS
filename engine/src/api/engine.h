@@ -9,6 +9,7 @@
 #include <string>
 
 #include "../core/config.h"
+#include "../core/scanner.h"
 #include "../ruleset/loaded_ruleset.h"
 
 namespace apg {
@@ -19,7 +20,8 @@ public:
     static std::unique_ptr<Engine> create(const Config& cfg);
     ~Engine();
 
-    std::string scan_text(const uint8_t* utf8, size_t len, const char* source);
+    // With `verdict` != nullptr only the verdict is computed (the returned string is empty).
+    std::string scan_text(const uint8_t* utf8, size_t len, const char* source, ScanVerdict* verdict = nullptr);
     std::string scan_json(const uint8_t* json, size_t len);
     std::string info_json();
     // Builds + verifies a new rule set completely, then swaps it in. On failure the old one stays active.

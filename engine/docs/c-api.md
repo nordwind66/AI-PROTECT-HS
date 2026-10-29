@@ -65,6 +65,22 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 - 返回的 JSON 缓冲区由**库的分配器**分配（`malloc`）并附加 `NUL` 结尾；`*out_len` 不含结尾 NUL。**必须用 `apg_free_buffer` 释放**，不得用 `free()`/`delete`（Windows 上调用方与 DLL 可能使用不同的 CRT）。失败时 `*out_json=NULL, *out_len=0`。
 - `apg_get_info`：引擎/ABI/规则集版本、哈希、后端（hyperscan 或 pcre2_fallback）、Hyperscan/PCRE2 版本、模式/规则数量、被隔离模式、策略与限额（`schemas/info.schema.json`）。
 
+### 3.1 不需要释放内存的接口（ABI 1.1 新增）
+
+高并发（例如每个 HTTP 请求扫一次）时可以不用 `apg_free_buffer`：
+
+| 函数 | 作用 |
+|---|---|
+| `apg_scan_text_verdict(ctx, utf8, len, source, &verdict)` | **最便宜**：只返回结论（`decision`、`score`、命中规则数），写进调用方的 `apg_verdict_t`。不生成 JSON，不定位举证文本，没有任何需要释放的东西。检测结果与 `apg_scan_text` 完全相同 |
+| `apg_scan_text_into(ctx, utf8, len, source, buf, cap, &out_len)` | 和 `apg_scan_text` 一样返回 JSON，但写进**调用方自己的缓冲区**（NUL 结尾），不需要释放 |
+| `apg_scan_json_into(ctx, req, req_len, buf, cap, &out_len)` | 同上，结构化入口 |
+
+`apg_verdict_t`：`decision`（`APG_DECISION_ALLOW=0` / `REVIEW=1` / `ALERT=2` / `BLOCK=3`）、`scan_error`（1 表示文本无法扫描，`decision` 取自 `policy.on_error`）、`score`、`matched_rules`。
+
+缓冲区太小时返回 `APG_ERR_BUFFER_TOO_SMALL`（9），不写入任何内容，`*out_len` 给出所需长度（再加 1 个终止符）；用更大的缓冲区重新调用即可。每个线程准备一块 64 KB 的缓冲区一般够用（命中规则很多或文本很长时 JSON 会更大）。
+
+推荐的热路径写法：先用 `apg_scan_text_verdict`，绝大多数请求是 `ALLOW`，到此结束；只对 `decision != ALLOW` 的请求再调 `apg_scan_text_into` 取命中规则和举证做记录或审计。
+
 ## 4. 状态码
 
 | 值 | 名称 | 含义 | 典型原因 |
@@ -78,6 +94,7 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 | 6 | `APG_ERR_OOM` | 内存不足 | — |
 | 7 | `APG_ERR_LIMIT` | 超出硬限制（扫描开始之前） | 请求 JSON 超过 `limits.max_request_bytes`、字段/上下文过多 |
 | 8 | `APG_ERR_INTERNAL` | 缺陷/意外异常 | 详情在 `apg_last_error()` |
+| 9 | `APG_ERR_BUFFER_TOO_SMALL` | 调用方缓冲区太小（ABI 1.1） | `apg_scan_*_into`；`*out_len` 为所需长度 |
 
 ## 5. 内存所有权（一页纸）
 

@@ -43,6 +43,7 @@ apg_status_t to_c(apg::Status s) noexcept {
         case apg::Status::Oom: return APG_ERR_OOM;
         case apg::Status::Limit: return APG_ERR_LIMIT;
         case apg::Status::Internal: return APG_ERR_INTERNAL;
+        case apg::Status::BufferTooSmall: return APG_ERR_BUFFER_TOO_SMALL;
     }
     return APG_ERR_INTERNAL;
 }
@@ -78,6 +79,17 @@ uint8_t* make_buffer(const std::string& s, size_t* out_len) {
     return p;
 }
 
+// Copies `s` into the caller's buffer (NUL-terminated); BufferTooSmall tells the size that is needed.
+void copy_into(const std::string& s, uint8_t* out_buf, size_t out_cap, size_t* out_len) {
+    *out_len = s.size();
+    if (out_buf == nullptr || out_cap < s.size() + 1) {
+        throw apg::Error(apg::Status::BufferTooSmall, "the result needs " + std::to_string(s.size() + 1) +
+                                                          " bytes (including the terminator), the buffer has " + std::to_string(out_cap));
+    }
+    if (!s.empty()) std::memcpy(out_buf, s.data(), s.size());
+    out_buf[s.size()] = 0;
+}
+
 apg_status_t invalid(const char* what) noexcept {
     set_error(what);
     return APG_ERR_INVALID_ARGUMENT;
@@ -102,6 +114,7 @@ APG_API const char* APG_CALL apg_status_string(apg_status_t status) {
         case APG_ERR_OOM: return "APG_ERR_OOM";
         case APG_ERR_LIMIT: return "APG_ERR_LIMIT";
         case APG_ERR_INTERNAL: return "APG_ERR_INTERNAL";
+        case APG_ERR_BUFFER_TOO_SMALL: return "APG_ERR_BUFFER_TOO_SMALL";
     }
     return "APG_ERR_UNKNOWN";
 }
@@ -157,6 +170,37 @@ APG_API apg_status_t APG_CALL apg_scan_json(apg_context_t* ctx, const uint8_t* r
     return guarded([&] {
         const std::string result = ctx->engine->scan_json(request_json, request_len);
         *out_json = make_buffer(result, out_len);
+    });
+}
+
+APG_API apg_status_t APG_CALL apg_scan_text_into(apg_context_t* ctx, const uint8_t* utf8, size_t utf8_len, const char* source,
+                                                 uint8_t* out_buf, size_t out_cap, size_t* out_len) {
+    if (out_len != nullptr) *out_len = 0;
+    if (ctx == nullptr) return invalid("ctx is NULL");
+    if (out_len == nullptr) return invalid("out_len is NULL");
+    return guarded([&] { copy_into(ctx->engine->scan_text(utf8, utf8_len, source), out_buf, out_cap, out_len); });
+}
+
+APG_API apg_status_t APG_CALL apg_scan_json_into(apg_context_t* ctx, const uint8_t* request_json, size_t request_len,
+                                                 uint8_t* out_buf, size_t out_cap, size_t* out_len) {
+    if (out_len != nullptr) *out_len = 0;
+    if (ctx == nullptr) return invalid("ctx is NULL");
+    if (out_len == nullptr) return invalid("out_len is NULL");
+    return guarded([&] { copy_into(ctx->engine->scan_json(request_json, request_len), out_buf, out_cap, out_len); });
+}
+
+APG_API apg_status_t APG_CALL apg_scan_text_verdict(apg_context_t* ctx, const uint8_t* utf8, size_t utf8_len, const char* source,
+                                                    apg_verdict_t* out_verdict) {
+    if (out_verdict == nullptr) return invalid("out_verdict is NULL");
+    std::memset(out_verdict, 0, sizeof *out_verdict);
+    if (ctx == nullptr) return invalid("ctx is NULL");
+    return guarded([&] {
+        apg::ScanVerdict v;
+        (void)ctx->engine->scan_text(utf8, utf8_len, source, &v);
+        out_verdict->decision = v.decision;
+        out_verdict->scan_error = v.scan_error ? 1 : 0;
+        out_verdict->score = v.score;
+        out_verdict->matched_rules = v.matched_rules;
     });
 }
 
