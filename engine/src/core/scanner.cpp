@@ -1,6 +1,8 @@
 #include "scanner.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 #include <chrono>
 #include <cstring>
 #include <map>
@@ -215,10 +217,18 @@ void write_error_result(const LoadedRuleset& rs, const Config& cfg, const ScanIn
 
 }  // namespace
 
-// Adds start_original / matched_text / normalized_text / sentence to an evidence object. The span comes from re-matching the
-// pattern with PCRE2 on the scanned view (Hyperscan only reports where a match ENDS); nothing is added when that fails.
-static void emit_evidence_text(JsonWriter& w, const LoadedRuleset& rs, ThreadScratch& sc, const Target& t, const HitInfo& h) {
-    if (!rs.locator || !sc.locate || !rs.locator->has(static_cast<int>(h.pattern_index))) return;
+// Where a hit matched. The span comes from re-matching the pattern with PCRE2 on the scanned view (Hyperscan only reports
+// where a match ENDS).
+struct Span {
+    uint64_t vs = 0, ve = 0;      // span inside the scanned view
+    uint64_t so = 0, eo = 0;      // the same span in the ORIGINAL text
+    ViewKind vk = ViewKind::Raw;
+    const char* vdata = nullptr;
+};
+
+// Finds where a hit matched: re-matches the pattern with PCRE2 on the scanned view and maps the span to the original text.
+static bool locate_span(const LoadedRuleset& rs, ThreadScratch& sc, const Target& t, const HitInfo& h, Span* out) {
+    if (!rs.locator || !sc.locate || !rs.locator->has(static_cast<int>(h.pattern_index))) return false;
     const ViewKind vk = static_cast<ViewKind>(h.view);
     const char* vdata = t.text;
     size_t vlen = t.len;
@@ -229,16 +239,27 @@ static void emit_evidence_text(JsonWriter& w, const LoadedRuleset& rs, ThreadScr
     }
     uint64_t vs = 0, ve = 0;
     int perr = 0;
-    if (rs.locator->match(static_cast<int>(h.pattern_index), vdata, vlen, *sc.locate, &ve, &perr, &vs) != Pcre2Set::Result::Match) return;
-    if (ve > vlen || vs > ve) return;
+    if (rs.locator->match(static_cast<int>(h.pattern_index), vdata, vlen, *sc.locate, &ve, &perr, &vs) != Pcre2Set::Result::Match) return false;
+    if (ve > vlen || vs > ve) return false;
     uint64_t so = vs, eo = ve;
     if (vk != ViewKind::Raw) {
         const Normalized& n = t.norm[h.view];
-        if (n.offsets.size() != n.text.size() + 1) return;           // offsets were not recorded
+        if (n.offsets.size() != n.text.size() + 1) return false;     // offsets were not recorded
         so = n.offsets[static_cast<size_t>(vs)];
         eo = original_end(t, vk, true, ve);
     }
-    if (eo > t.len || so >= eo) return;
+    if (eo > t.len || so >= eo) return false;
+    out->vs = vs; out->ve = ve; out->so = so; out->eo = eo; out->vk = vk; out->vdata = vdata;
+    return true;
+}
+
+// Adds start_original / matched_text / normalized_text / sentence to an evidence object (nothing is added when the span cannot be located).
+static void emit_evidence_text(JsonWriter& w, const LoadedRuleset& rs, ThreadScratch& sc, const Target& t, const HitInfo& h) {
+    Span sp;
+    if (!locate_span(rs, sc, t, h, &sp)) return;
+    const ViewKind vk = sp.vk;
+    const char* vdata = sp.vdata;
+    const uint64_t vs = sp.vs, ve = sp.ve, so = sp.so, eo = sp.eo;
     bool cut = false;
     size_t take = static_cast<size_t>(eo - so);
     if (take > kMaxEvidenceBytes) {
@@ -354,7 +375,7 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
     }
 
     // ---- 3. scan every target with every profile ------------------------------------------------------------
-    const bool want_offsets = cfg.output.include_offsets || cfg.output.include_evidence_text;
+    const bool want_offsets = cfg.output.include_offsets || cfg.output.include_evidence_text || (verdict != nullptr && verdict->hits_cap > 0);
     bool hit_limit = false, verify_failed = false;
     std::vector<Candidate> cands;
     for (Target& t : targets) {
@@ -596,6 +617,22 @@ std::string run_scan(const LoadedRuleset& rs, const Config& cfg, const ScanInput
         verdict->scan_error = false;
         verdict->score = score;
         verdict->matched_rules = static_cast<uint32_t>(matched.size());
+        for (size_t i = 0; verdict->hits != nullptr && i < matched.size() && i < verdict->hits_cap; ++i) {
+            HitOut& ho = verdict->hits[i];
+            std::snprintf(ho.rule_id, sizeof ho.rule_id, "%s", matched[i].rule->id.c_str());
+            ho.matched_text[0] = '\0';
+            for (const auto& ev : matched[i].evidence) {
+                const Target* t = ev.first;
+                const HitInfo* h = t->hit_info(ev.second);
+                Span sp;
+                if (h == nullptr || !locate_span(rs, sc, *t, *h, &sp)) continue;
+                size_t take = static_cast<size_t>(sp.eo - sp.so);
+                if (take > sizeof ho.matched_text - 1) take = utf8_floor(t->text + sp.so, t->len - static_cast<size_t>(sp.so), sizeof ho.matched_text - 1);
+                std::memcpy(ho.matched_text, t->text + sp.so, take);
+                ho.matched_text[take] = '\0';
+                break;
+            }
+        }
         return out;
     }
     const uint64_t duration_us = elapsed_us();

@@ -204,6 +204,25 @@ APG_API apg_status_t APG_CALL apg_scan_text_verdict(apg_context_t* ctx, const ui
     });
 }
 
+APG_API apg_status_t APG_CALL apg_scan_text_hits(apg_context_t* ctx, const uint8_t* utf8, size_t utf8_len, const char* source,
+                                                 apg_hit_t* hits, size_t hits_cap, apg_verdict_t* out_verdict) {
+    if (out_verdict == nullptr) return invalid("out_verdict is NULL");
+    std::memset(out_verdict, 0, sizeof *out_verdict);
+    if (ctx == nullptr) return invalid("ctx is NULL");
+    if (hits == nullptr && hits_cap != 0) return invalid("hits is NULL but hits_cap is not 0");
+    static_assert(sizeof(apg_hit_t) == sizeof(apg::HitOut), "apg_hit_t and apg::HitOut must have the same layout");
+    return guarded([&] {
+        apg::ScanVerdict v;
+        v.hits = reinterpret_cast<apg::HitOut*>(hits);
+        v.hits_cap = hits_cap;
+        (void)ctx->engine->scan_text(utf8, utf8_len, source, &v);
+        out_verdict->decision = v.decision;
+        out_verdict->scan_error = v.scan_error ? 1 : 0;
+        out_verdict->score = v.score;
+        out_verdict->matched_rules = v.matched_rules;
+    });
+}
+
 APG_API apg_status_t APG_CALL apg_get_info(apg_context_t* ctx, uint8_t** out_json, size_t* out_len) {
     if (out_json != nullptr) *out_json = nullptr;
     if (out_len != nullptr) *out_len = 0;

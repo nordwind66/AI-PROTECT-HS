@@ -72,14 +72,15 @@ void         apg_free_buffer(void *ptr);               // NULL 允许
 | 函数 | 作用 |
 |---|---|
 | `apg_scan_text_verdict(ctx, utf8, len, source, &verdict)` | **最便宜**：只返回结论（`decision`、`score`、命中规则数），写进调用方的 `apg_verdict_t`。不生成 JSON，不定位举证文本，没有任何需要释放的东西。检测结果与 `apg_scan_text` 完全相同 |
+| `apg_scan_text_hits(ctx, utf8, len, source, hits, hits_cap, &verdict)` | **只要“规则编号 + 命中文本”时用它**：调用方给一个 `apg_hit_t hits[N]` 数组（例如 8 个），引擎写入 `min(命中规则数, N)` 条，风险最高的在前，每条规则一条：`rule_id`（如 `AIPS-PI-0009`）和 `matched_text`（原文里命中的片段，最长 255 字节，在字符边界截断）。`verdict.matched_rules` 是命中规则的总数，大于 N 说明放不下。无 JSON、无分配、无需释放，规则与分数和 `apg_scan_text` 一致 |
 | `apg_scan_text_into(ctx, utf8, len, source, buf, cap, &out_len)` | 和 `apg_scan_text` 一样返回 JSON，但写进**调用方自己的缓冲区**（NUL 结尾），不需要释放 |
 | `apg_scan_json_into(ctx, req, req_len, buf, cap, &out_len)` | 同上，结构化入口 |
 
-`apg_verdict_t`：`decision`（`APG_DECISION_ALLOW=0` / `REVIEW=1` / `ALERT=2` / `BLOCK=3`）、`scan_error`（1 表示文本无法扫描，`decision` 取自 `policy.on_error`）、`score`、`matched_rules`。
+`apg_hit_t`：`char rule_id[32]`、`char matched_text[256]`（均以 NUL 结尾）。`apg_verdict_t`：`decision`（`APG_DECISION_ALLOW=0` / `REVIEW=1` / `ALERT=2` / `BLOCK=3`）、`scan_error`（1 表示文本无法扫描，`decision` 取自 `policy.on_error`）、`score`、`matched_rules`。
 
 缓冲区太小时返回 `APG_ERR_BUFFER_TOO_SMALL`（9），不写入任何内容，`*out_len` 给出所需长度（再加 1 个终止符）；用更大的缓冲区重新调用即可。每个线程准备一块 64 KB 的缓冲区一般够用（命中规则很多或文本很长时 JSON 会更大）。
 
-推荐的热路径写法：先用 `apg_scan_text_verdict`，绝大多数请求是 `ALLOW`，到此结束；只对 `decision != ALLOW` 的请求再调 `apg_scan_text_into` 取命中规则和举证做记录或审计。
+推荐的热路径写法：只用一个 `apg_scan_text_hits`：`verdict.decision` 决定放行与否，`hits[]` 给出命中的规则编号和文本，需要更多信息（规则名、类别、偏移、所在句子）时才对个别请求调 `apg_scan_text_into`。
 
 ## 4. 状态码
 
@@ -232,3 +233,13 @@ apg_destroy(ctx);
 | `fields` 里有规则不读取的字段 | 列入 `fields_ignored`，不扫描 |
 | 大量命中 | 超过 `limits.max_hits` → `hit_limit_exceeded`（保护内存与时间） |
 | 同一上下文的并发 `apg_destroy` 与扫描 | 见 §3 的契约 |
+
+```c
+/* 最短的调用：结论 + 规则编号 + 命中文本，全部在栈上 */
+apg_hit_t hits[8];
+apg_verdict_t v;
+if (apg_scan_text_hits(ctx, (const uint8_t *)text, strlen(text), "user_input", hits, 8, &v) == APG_OK && v.decision != APG_DECISION_ALLOW) {
+    for (uint32_t i = 0; i < v.matched_rules && i < 8; ++i)
+        printf("%s: %s\n", hits[i].rule_id, hits[i].matched_text);
+}
+```

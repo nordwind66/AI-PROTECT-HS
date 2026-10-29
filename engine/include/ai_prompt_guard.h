@@ -109,6 +109,15 @@ typedef struct apg_verdict {
     uint32_t reserved;       /* always 0                                                             */
 } apg_verdict_t;
 
+/* (ABI 1.1) One matched rule in its leanest form, filled in by apg_scan_text_hits(): the rule and the text that matched. */
+#define APG_HIT_RULE_ID_MAX 32
+#define APG_HIT_TEXT_MAX    256
+typedef struct apg_hit {
+    char rule_id[APG_HIT_RULE_ID_MAX];     /* e.g. "AIPS-PI-0009", NUL-terminated                                  */
+    char matched_text[APG_HIT_TEXT_MAX];   /* the fragment of the ORIGINAL text that matched (UTF-8, NUL-terminated,
+                                              cut at a character boundary; empty if it could not be located)       */
+} apg_hit_t;
+
 /* ---- identification --------------------------------------------------------------------- */
 
 /* ABI version of the loaded library, see APG_ABI_VERSION. */
@@ -199,6 +208,21 @@ APG_API apg_status_t APG_CALL apg_scan_json_into(apg_context_t *ctx, const uint8
 APG_API apg_status_t APG_CALL apg_scan_text_verdict(apg_context_t *ctx, const uint8_t *utf8,
                                                     size_t utf8_len, const char *source,
                                                     apg_verdict_t *out_verdict);
+
+/*
+ * (ABI 1.1) The verdict plus the matched rules in the leanest form, all in caller-owned memory: nothing is allocated for
+ * the result, nothing is freed, no JSON is built.
+ *   hits / hits_cap : an array of apg_hit_t of the caller (e.g. 8 entries; may be NULL when hits_cap is 0). It receives
+ *                     min(matched rules, hits_cap) entries, the highest-risk rule first, one entry per rule (the first
+ *                     fragment of it that matched). Entries beyond that are left untouched.
+ *   out_verdict     : decision, score and the TOTAL number of matched rules (out_verdict->matched_rules), so
+ *                     matched_rules > hits_cap tells that more rules matched than fit.
+ * Same detection as apg_scan_text (same score, same decision, same rules).
+ */
+APG_API apg_status_t APG_CALL apg_scan_text_hits(apg_context_t *ctx, const uint8_t *utf8,
+                                                 size_t utf8_len, const char *source,
+                                                 apg_hit_t *hits, size_t hits_cap,
+                                                 apg_verdict_t *out_verdict);
 
 /*
  * Structured entry point: request_json is a UTF-8 JSON document (schemas/request.schema.json) with

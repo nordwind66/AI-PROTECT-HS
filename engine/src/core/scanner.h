@@ -29,7 +29,15 @@ struct ScanInput {
 };
 
 // The outcome of a scan without JSON (decision codes as in the public header: 0 allow, 1 review, 2 alert, 3 block).
+// One matched rule for the lean result (same layout as apg_hit_t of the public header).
+struct HitOut {
+    char rule_id[32];
+    char matched_text[256];
+};
+
 struct ScanVerdict {
+    HitOut* hits = nullptr;        // optional output array: the matched rules, highest risk first
+    size_t hits_cap = 0;
     int decision = 0;
     bool scan_error = false;       // the text could not be scanned; decision comes from policy.on_error
     double score = 0.0;
